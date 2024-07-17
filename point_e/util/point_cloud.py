@@ -2,6 +2,7 @@ import random
 from dataclasses import dataclass
 from typing import BinaryIO, Dict, List, Optional, Union
 
+import torch
 import numpy as np
 
 from .ply_util import write_ply
@@ -43,6 +44,20 @@ class PointCloud:
                 coords=obj["coords"],
                 channels={k: obj[k] for k in keys if k != "coords"},
             )
+        
+    @classmethod
+    def load_shapenet(cls, path: str) -> "PointCloud":
+        """
+        Load the shapebet point cloud from a .npz file.
+        """
+        with open(path, "rb") as fn:
+            coords = np.load(fn)["pointcloud"].astype(np.float32)
+        coords[:, [0, 1, 2]] = coords[:, [2, 0, 1]]
+        channels = {k: np.zeros_like(coords[:, 0], dtype=np.float32) for k in ["R", "G", "B"]}
+        return PointCloud(
+            coords=coords,
+            channels=channels,
+        )
 
     def save(self, f: Union[str, BinaryIO]):
         """
@@ -172,3 +187,14 @@ class PointCloud:
                 k: np.concatenate([v, other.channels[k]], axis=0) for k, v in self.channels.items()
             },
         )
+
+    def encode(self) -> torch.Tensor:
+        """
+        Encode the point cloud to a Kx6 tensor where K is the number of points.
+        """
+        coords = torch.tensor(self.coords.T, dtype=torch.float32)
+        rgb = [(self.channels[x] * 255).astype(np.uint8) for x in "RGB"]
+        rgb = [torch.tensor(x, dtype=torch.float32) for x in rgb]
+        rgb = torch.stack(rgb, dim=0)
+        return torch.cat([coords, rgb], dim=0)
+    
