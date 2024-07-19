@@ -2,7 +2,7 @@
 Helpers for sampling from a single- or multi-stage point cloud diffusion model.
 """
 
-from typing import Any, Callable, Dict, Iterator, List, Sequence, Tuple
+from typing import Any, Callable, Dict, Optional, Iterator, List, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -38,6 +38,7 @@ class PointCloudSampler:
         sigma_min: Sequence[float] = (1e-3, 1e-3),
         sigma_max: Sequence[float] = (120, 160),
         s_churn: Sequence[float] = (3, 0),
+        experiment1_t: Optional[int] = None
     ):
         n = len(models)
         assert n > 0
@@ -79,6 +80,7 @@ class PointCloudSampler:
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
         self.s_churn = s_churn
+        self.experiment1_t = experiment1_t
 
         self.models = models
         self.diffusions = diffusions
@@ -147,6 +149,7 @@ class PointCloudSampler:
                     sigma_max=stage_sigma_max,
                     s_churn=stage_s_churn,
                     guidance_scale=stage_guidance_scale,
+                    experiment1_sampler = self if self.experiment1_t is not None else None
                 )
             else:
                 internal_batch_size = batch_size

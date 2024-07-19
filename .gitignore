@@ -3,4 +3,6 @@ __pycache__/
 point_e_model_cache/
 .ipynb_checkpoints/
 .DS_Store
-
+point_e/examples/experiment1.html
+point_e/examples/experiment1_html/
+point_e/examples/experiment1_tmp/

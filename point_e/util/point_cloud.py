@@ -2,6 +2,8 @@ import random
 from dataclasses import dataclass
 from typing import BinaryIO, Dict, List, Optional, Union
 
+from matplotlib import pyplot as plt
+from matplotlib.colors import Normalize
 import numpy as np
 
 from .ply_util import write_ply
@@ -172,3 +174,18 @@ class PointCloud:
                 k: np.concatenate([v, other.channels[k]], axis=0) for k, v in self.channels.items()
             },
         )
+
+    def set_color_by_dist(self, other: "PointCloud"):
+        """
+        Set the color of each point based on the distance to the nearest point
+        in another point cloud.
+        """
+        distances = np.sqrt(np.sum((self.coords - other.coords)**2, axis=1))
+        norm = Normalize(vmin=distances.min(), vmax=distances.max())
+        norm_distances = norm(distances)
+        cmap = plt.get_cmap("turbo")
+        rgb_values = cmap(norm_distances)[:, :3]
+        self.channels["R"] = rgb_values[:, 0]
+        self.channels["G"] = rgb_values[:, 1]
+        self.channels["B"] = rgb_values[:, 2]
+        
