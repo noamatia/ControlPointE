@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from point_e.util.point_cloud import PointCloud
 
 PROMPTS = "prompt"
+UTTERANCE = "utterance"
 SOURCE_UID = "source_uid"
 TARGET_UID = "target_uid"
 SOURCE_LATENTS = "source_latents"
@@ -23,7 +24,6 @@ class ControlShapeNet(Dataset):
         self,
         num_points: int,
         batch_size: int,
-        prompt_key: str,
         df: pd.DataFrame,
         device: torch.device,
     ):
@@ -32,12 +32,12 @@ class ControlShapeNet(Dataset):
         self.source_latents = []
         self.target_latents = []
         for _, row in tqdm.tqdm(df.iterrows(), total=len(df), desc="Creating data"):
-            self._append_sample(row, prompt_key, num_points, device)
+            self._append_sample(row, num_points, device)
         self._set_length(batch_size)
 
-    def _append_sample(self, row, prompt_key, num_points, device):
+    def _append_sample(self, row, num_points, device):
         prompt, source_uid, target_uid = (
-            row[prompt_key],
+            row[UTTERANCE],
             row[SOURCE_UID],
             row[TARGET_UID],
         )
