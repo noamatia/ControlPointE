@@ -1,4 +1,5 @@
 import os
+import json
 import tqdm
 import torch
 import pandas as pd
@@ -9,19 +10,43 @@ PROMPTS = "prompts"
 UTTERANCE = "utterance"
 SOURCE_UID = "source_uid"
 TARGET_UID = "target_uid"
+SOURCE_MASKS = "source_masks"
+TARGET_MASKS = "target_masks"
 SOURCE_LATENTS = "source_latents"
 TARGET_LATENTS = "target_latents"
+PARTNET_DIR = "/scratch/noam/data_v0"
 PCS_DIR = "/scratch/noam/shapetalk/point_clouds/scaled_to_align_rendering"
 
 
-def load_pc(num_points, uid):
-    pc = PointCloud.load_shapenet(os.path.join(PCS_DIR, uid + ".npz"))
+def partnet_metadata_path(uid):
+    return os.path.join("partnet", uid, "masked_labels.json")
+
+
+def load_partnet_metadata(uid, part):
+    path = partnet_metadata_path(uid)
+    with open(path, "r") as f:
+        data = json.load(f)
+    masked_labels = data["masked_labels"][part]
+    return masked_labels, data["partnet_uid"]
+
+
+def load_pc(partnet_uid, shapenet_uid, num_points, masked_labels):
+    src_dir = os.path.join(PARTNET_DIR, partnet_uid)
+    pc = PointCloud.load_partnet(
+        os.path.join(
+            src_dir, "point_sample", "sample-points-all-pts-nor-rgba-10000.txt"
+        ),
+        os.path.join(src_dir, "point_sample", "sample-points-all-label-10000.txt"),
+        os.path.join(PCS_DIR, shapenet_uid + ".npz"),
+        masked_labels,
+    )
     return pc.random_sample(num_points)
 
 
 class ControlShapeNet(Dataset):
     def __init__(
         self,
+        part: str,
         num_points: int,
         batch_size: int,
         df: pd.DataFrame,
@@ -29,21 +54,41 @@ class ControlShapeNet(Dataset):
     ):
         super().__init__()
         self.prompts = []
+        self.source_masks = []
+        self.target_masks = []
         self.source_latents = []
         self.target_latents = []
         for _, row in tqdm.tqdm(df.iterrows(), total=len(df), desc="Creating data"):
-            self._append_sample(row, num_points, device)
+            self._append_sample(row, num_points, device, part)
         self.set_length(batch_size)
 
-    def _append_sample(self, row, num_points, device):
+    def _append_sample(self, row, num_points, device, part):
         prompt, source_uid, target_uid = (
             row[UTTERANCE],
             row[SOURCE_UID],
             row[TARGET_UID],
         )
         self.prompts.append(prompt)
-        source_pc = load_pc(num_points, source_uid)
-        target_pc = load_pc(num_points, target_uid)
+        source_masked_labels, source_partnet_uid = load_partnet_metadata(
+            source_uid, part
+        )
+        target_masked_labels, target_partnet_uid = load_partnet_metadata(
+            target_uid, part
+        )
+        source_pc = load_pc(
+            source_partnet_uid,
+            source_uid,
+            num_points,
+            source_masked_labels,
+        )
+        target_pc = load_pc(
+            target_partnet_uid,
+            target_uid,
+            num_points,
+            target_masked_labels,
+        )
+        self.source_masks.append(source_pc.encode_mask().to(device))
+        self.target_masks.append(target_pc.encode_mask().to(device))
         self.source_latents.append(source_pc.encode().to(device))
         self.target_latents.append(target_pc.encode().to(device))
 
@@ -67,6 +112,8 @@ class ControlShapeNet(Dataset):
         index = logical_index % self.length
         return {
             PROMPTS: self.prompts[index],
+            SOURCE_MASKS: self.source_masks[index],
+            TARGET_MASKS: self.target_masks[index],
             SOURCE_LATENTS: self.source_latents[index],
             TARGET_LATENTS: self.target_latents[index],
         }

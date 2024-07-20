@@ -9,10 +9,13 @@ from torch.utils.data import DataLoader
 from point_e.util.plotting import plot_point_cloud
 from point_e.models.download import load_checkpoint
 from point_e.diffusion.sampler import PointCloudSampler
+from point_e.diffusion.gaussian_diffusion import mean_flat
 from point_e.models.configs import MODEL_CONFIGS, model_from_config
 from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
 from control_shapenet import (
     PROMPTS,
+    SOURCE_MASKS,
+    TARGET_MASKS,
     SOURCE_LATENTS,
     TARGET_LATENTS,
 )
@@ -20,15 +23,17 @@ from control_shapenet import (
 TEXTS = "texts"
 SOURCE = "source"
 TARGET = "target"
-OUTPUT = "output"
 MODEL_NAME = "base40M-textvec"
-LATENT_TYPES = [SOURCE, TARGET]
+MASKED_SOURCE = "masked_source"
+MASKED_TARGET = "masked_target"
+LATENT_TYPES = [SOURCE, TARGET, MASKED_SOURCE, MASKED_TARGET]
 
 
 class ControlPointE(pl.LightningModule):
     def __init__(
         self,
         lr: float,
+        beta: float,
         timesteps: int,
         num_points: int,
         batch_size: int,
@@ -39,6 +44,7 @@ class ControlPointE(pl.LightningModule):
         super().__init__()
         self.lr = lr
         self.dev = dev
+        self.beta = beta
         self.timesteps = timesteps
         self.batch_size = batch_size
         self._init_model(cond_drop_prob, num_points)
@@ -71,17 +77,26 @@ class ControlPointE(pl.LightningModule):
     def _init_val_data(self, val_data_loader):
         log_data = {lt: [] for lt in LATENT_TYPES}
         for batch in val_data_loader:
-            for prompt, source_latent, target_latent in zip(
-                batch[PROMPTS], batch[SOURCE_LATENTS], batch[TARGET_LATENTS]
+            for prompt, source_mask, target_mask, source_latent, target_latent in zip(
+                batch[PROMPTS],
+                batch[SOURCE_MASKS],
+                batch[TARGET_MASKS],
+                batch[SOURCE_LATENTS],
+                batch[TARGET_LATENTS],
             ):
-                latents = [source_latent, target_latent]
+                latents = [
+                    source_latent,
+                    target_latent,
+                    source_latent * source_mask,
+                    target_latent * target_mask,
+                ]
                 for name, latent in zip(LATENT_TYPES, latents):
                     log_data[name].append(self._plot([latent], prompt))
         wandb.log(log_data, step=None)
 
     def _plot(self, samples, prompt):
         pc = self.sampler.output_to_point_clouds(samples)[0]
-        fig = plot_point_cloud(pc, theta=np.pi * 3 / 2)
+        fig = plot_point_cloud(pc, theta=np.pi * 1 / 2)
         img = wandb.Image(fig, caption=prompt)
         plt.close()
         return img
@@ -97,8 +112,10 @@ class ControlPointE(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.lr)
 
     def training_step(self, batch, batch_idx):
-        prompts, source_latents, target_latents = (
+        prompts, source_masks, target_masks, source_latents, target_latents = (
             batch[PROMPTS],
+            batch[SOURCE_MASKS],
+            batch[TARGET_MASKS],
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
         )
@@ -109,21 +126,38 @@ class ControlPointE(pl.LightningModule):
             model_kwargs={TEXTS: prompts, "guidance": source_latents},
         )
         loss = terms["loss"].mean()
-        log_data = {"loss": loss.item()}
-        wandb.log(log_data)
-        return loss
+        samples = self._sample(source_latents, prompts, self.batch_size)
+        reg_loss = mean_flat(
+            (target_masks * samples - source_masks * source_latents) ** 2
+        ).mean()
+        train_loss = self.beta * loss + (1 - self.beta) * reg_loss
+        wandb.log(
+            {
+                "loss": loss.item(),
+                "reg_loss": reg_loss.item(),
+                "train_loss": train_loss.item(),
+            },
+            step=None,
+        )
+        return train_loss
 
     def validation_step(self, batch, batch_idx):
         assert batch_idx == 0
-        log_data = {OUTPUT: []}
+        outputs = []
+        self.model.eval()
         with torch.no_grad():
             for prompt, source_latent in zip(batch[PROMPTS], batch[SOURCE_LATENTS]):
-                samples = None
-                for x in self.sampler.sample_batch_progressive(
-                    batch_size=1,
-                    guidances=[source_latent],
-                    model_kwargs={TEXTS: [prompt]},
-                ):
-                    samples = x
-                log_data[OUTPUT].append(self._plot(samples, prompt))
-        wandb.log(log_data, step=None)
+                samples = self._sample(source_latent, [prompt], 1)
+                outputs.append(self._plot(samples, prompt))
+        wandb.log({"output": outputs}, step=None)
+        self.model.train()
+
+    def _sample(self, source_latents, prompts, batch_size):
+        samples = None
+        for x in self.sampler.sample_batch_progressive(
+            batch_size=batch_size,
+            guidances=[source_latents],
+            model_kwargs={TEXTS: prompts},
+        ):
+            samples = x
+        return samples

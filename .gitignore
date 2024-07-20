@@ -5,3 +5,6 @@ point_e_model_cache/
 .DS_Store
 wandb/
 lightning_logs/
+partnet/
+point_e/examples/experiment1
+point_e/examples/experiment2
