@@ -5,7 +5,7 @@ import pandas as pd
 from torch.utils.data import Dataset
 from point_e.util.point_cloud import PointCloud
 
-PROMPTS = "prompt"
+PROMPTS = "prompts"
 UTTERANCE = "utterance"
 SOURCE_UID = "source_uid"
 TARGET_UID = "target_uid"
@@ -33,7 +33,7 @@ class ControlShapeNet(Dataset):
         self.target_latents = []
         for _, row in tqdm.tqdm(df.iterrows(), total=len(df), desc="Creating data"):
             self._append_sample(row, num_points, device)
-        self._set_length(batch_size)
+        self.set_length(batch_size)
 
     def _append_sample(self, row, num_points, device):
         prompt, source_uid, target_uid = (
@@ -47,8 +47,12 @@ class ControlShapeNet(Dataset):
         self.source_latents.append(source_pc.encode().to(device))
         self.target_latents.append(target_pc.encode().to(device))
 
-    def _set_length(self, batch_size):
-        self.length = len(self.prompts)
+    def set_length(self, batch_size, length=None):
+        if length is None:
+            self.length = len(self.prompts)
+        else:
+            assert length <= len(self.prompts)
+            self.length = length
         r = self.length % batch_size
         if r == 0:
             self.logical_length = self.length
