@@ -23,7 +23,6 @@ THE SOFTWARE.
 """
 
 import os
-import imageio
 from matplotlib import pyplot as plt
 import numpy as np
 import torch as th
@@ -146,8 +145,13 @@ def karras_sample_progressive(
         assert sampler == "heun"
         assert shape[0] == 2
         shape = (1, shape[1], shape[2])
-        x_T = th.randn(*shape, device=device) * sigma_max
-        x_T = th.cat([x_T, x_T], dim=0)
+        x_T_path = os.path.join(os.getenv("EXPERIMENT2_DIR"), "x_T.pt")
+        if os.path.exists(x_T_path):
+            x_T = th.load(x_T_path)
+        else:
+            x_T = th.randn(*shape, device=device) * sigma_max
+            x_T = th.cat([x_T, x_T], dim=0)
+            th.save(x_T, x_T_path)
     sample_fn = {"heun": sample_heun, "dpm": sample_dpm, "ancestral": sample_euler_ancestral}[
         sampler
     ]
@@ -269,7 +273,6 @@ def sample_heun(
 
         indices = tqdm(indices)
 
-    experiment2_dict = {0: [], 1: []}
     experiment2 = experiment2_sampler is not None
     experiment2_t = experiment2_sampler.experiment2_t if experiment2 else None
     experiment2_step = False
@@ -279,8 +282,14 @@ def sample_heun(
         )
         if experiment2:
             assert x.shape[0] == 2
-            eps = th.randn((1, x.shape[1], x.shape[2])) * s_noise
-            eps = th.cat([eps, eps], dim=0).to(x.device)
+            os.makedirs(os.path.join(os.getenv("EXPERIMENT2_DIR"), "eps"), exist_ok=True)
+            eps_path = os.path.join(os.getenv("EXPERIMENT2_DIR"), "eps", f"eps_{i}.pt")
+            if os.path.exists(eps_path):
+                eps = th.load(eps_path)
+            else:
+                eps = th.randn((1, x.shape[1], x.shape[2])) * s_noise
+                eps = th.cat([eps, eps], dim=0).to(x.device)
+                th.save(eps, eps_path)
             experiment2_step = i < experiment2_t
         else:
             eps = th.randn_like(x) * s_noise
@@ -301,24 +310,22 @@ def sample_heun(
             d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
-        if experiment2 and not experiment2_step:
-            samples = diffusion.unscale_channels(x)
-            pcs = experiment2_sampler.output_to_point_clouds(samples)
-            for j in range(2):
-                pcs[j].set_color_by_dist(pcs[1 - j])
-                fig = plot_point_cloud(pcs[j])
-                path = os.path.join(os.getenv("EXPERIMENT2_TMP_DIR"), f"{j}_{i}.png")
-                fig.savefig(path)
-                experiment2_dict[j].append(path)
-                plt.close()
+        if experiment2 and experiment2_sampler.experiment2_indices is not None:
+            mask = th.zeros(x.size(2), dtype=th.bool).to(x.device)
+            mask[experiment2_sampler.experiment2_indices] = True
+            x[1] = x[1].where(mask.unsqueeze(0).unsqueeze(0), x[0])
     if experiment2:
+        samples = diffusion.unscale_channels(x)
+        pcs = experiment2_sampler.output_to_point_clouds(samples)
         for j in range(2):
-            images = []
-            for file in experiment2_dict[j]:
-                images.append(imageio.imread(file))
-                os.remove(file)
-            if images:
-                imageio.mimsave(os.path.join(os.getenv("EXPERIMENT2_TMP_DIR"), f"{experiment2_t}_{j}.gif"), images, duration=1.0)
+            name = f"{j}" if experiment2_sampler.experiment2_indices is None else f"{j}_masked"
+            with open(os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.ply"), "wb") as f:
+                pcs[j].write_ply(f)
+            pcs[j].set_color_by_dist(pcs[1 - j])
+            fig = plot_point_cloud(pcs[j])
+            path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.png")
+            fig.savefig(path)
+            plt.close()
     yield {"x": x, "pred_xstart": denoised}
 
 

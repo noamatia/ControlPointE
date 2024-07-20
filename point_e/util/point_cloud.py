@@ -5,6 +5,7 @@ from typing import BinaryIO, Dict, List, Optional, Union
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
 import numpy as np
+import open3d as o3d
 
 from .ply_util import write_ply
 
@@ -189,3 +190,27 @@ class PointCloud:
         self.channels["G"] = rgb_values[:, 1]
         self.channels["B"] = rgb_values[:, 2]
         
+    def set_color_by_indices(self, indices: List[int]):
+        """
+        Set the color of each point based on the given list of indices.
+        Points with indices in the list will be set to red, while the
+        other points will be set to black.
+        """
+        self.channels["R"] = np.where(np.isin(np.arange(len(self.coords)), indices), 1.0, 0.0)
+        self.channels["G"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
+        self.channels["B"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
+
+    
+    @classmethod
+    def from_ply(cls, file_path: str) -> "PointCloud":
+        """
+        Read a point cloud from a .ply file.
+
+        :param file_path: path to the .ply file.
+        :return: a PointCloud object.
+        """
+        point_cloud = o3d.io.read_point_cloud(file_path)
+        return PointCloud(coords=np.asarray(point_cloud.points),
+                          channels={"R": np.asarray(point_cloud.colors)[:, 0],
+                                    "G": np.asarray(point_cloud.colors)[:, 1],
+                                    "B": np.asarray(point_cloud.colors)[:, 2]})
