@@ -259,7 +259,7 @@ class CLIPImagePointDiffusionTransformer(PointDiffusionTransformer):
         images: Optional[Iterable[Optional[ImageType]]] = None,
         texts: Optional[Iterable[Optional[str]]] = None,
         embeddings: Optional[Iterable[Optional[torch.Tensor]]] = None,
-        experiment1_step: bool = False,
+        experiment2_step: bool = False,
     ):
         """
         :param x: an [N x C x T] tensor.
@@ -283,7 +283,7 @@ class CLIPImagePointDiffusionTransformer(PointDiffusionTransformer):
         clip_out = math.sqrt(clip_out.shape[1]) * clip_out
 
         clip_embed = self.clip_embed(clip_out)
-        if experiment1_step:
+        if experiment2_step:
             assert clip_embed.shape[0] == 4
             clip_embed[1] = clip_embed[0]
             clip_embed[3] = clip_embed[2]

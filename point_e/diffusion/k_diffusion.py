@@ -138,11 +138,11 @@ def karras_sample_progressive(
     s_tmax=float("inf"),
     s_noise=1.0,
     guidance_scale=0.0,
-    experiment1_sampler=None,
+    experiment2_sampler=None,
 ):
     sigmas = get_sigmas_karras(steps, sigma_min, sigma_max, rho, device=device)
     x_T = th.randn(*shape, device=device) * sigma_max
-    if experiment1_sampler is not None:
+    if experiment2_sampler is not None:
         assert sampler == "heun"
         assert shape[0] == 2
         shape = (1, shape[1], shape[2])
@@ -168,9 +168,9 @@ def karras_sample_progressive(
     elif isinstance(diffusion, GaussianDiffusion):
         model = GaussianToKarrasDenoiser(model, diffusion)
 
-        def denoiser(x_t, sigma, experiment1_step=False):
+        def denoiser(x_t, sigma, experiment2_step=False):
             _, denoised = model.denoise(
-                x_t, sigma, clip_denoised=clip_denoised, model_kwargs={**model_kwargs, "experiment1_step": experiment1_step}
+                x_t, sigma, clip_denoised=clip_denoised, model_kwargs={**model_kwargs, "experiment2_step": experiment2_step}
             )
             return denoised
 
@@ -179,10 +179,10 @@ def karras_sample_progressive(
 
     if guidance_scale != 0 and guidance_scale != 1:
 
-        def guided_denoiser(x_t, sigma, experiment1_step=False):
+        def guided_denoiser(x_t, sigma, experiment2_step=False):
             x_t = th.cat([x_t, x_t], dim=0)
             sigma = th.cat([sigma, sigma], dim=0)
-            x_0 = denoiser(x_t, sigma, experiment1_step=experiment1_step)
+            x_0 = denoiser(x_t, sigma, experiment2_step=experiment2_step)
             cond_x_0, uncond_x_0 = th.split(x_0, len(x_0) // 2, dim=0)
             x_0 = uncond_x_0 + guidance_scale * (cond_x_0 - uncond_x_0)
             return x_0
@@ -195,7 +195,7 @@ def karras_sample_progressive(
         x_T,
         sigmas,
         progress=progress,
-        experiment1_sampler=experiment1_sampler,
+        experiment2_sampler=experiment2_sampler,
         diffusion=diffusion,
         **sampler_args,
     ):
@@ -254,7 +254,7 @@ def sample_heun(
     x,
     sigmas,
     progress=False,
-    experiment1_sampler=None,
+    experiment2_sampler=None,
     diffusion=None,
     s_churn=0.0,
     s_tmin=0.0,
@@ -269,25 +269,25 @@ def sample_heun(
 
         indices = tqdm(indices)
 
-    experiment1_dict = {0: [], 1: []}
-    experiment1 = experiment1_sampler is not None
-    experiment1_t = experiment1_sampler.experiment1_t if experiment1 else None
-    experiment1_step = False
+    experiment2_dict = {0: [], 1: []}
+    experiment2 = experiment2_sampler is not None
+    experiment2_t = experiment2_sampler.experiment2_t if experiment2 else None
+    experiment2_step = False
     for i in indices:
         gamma = (
             min(s_churn / (len(sigmas) - 1), 2**0.5 - 1) if s_tmin <= sigmas[i] <= s_tmax else 0.0
         )
-        if experiment1:
+        if experiment2:
             assert x.shape[0] == 2
             eps = th.randn((1, x.shape[1], x.shape[2])) * s_noise
             eps = th.cat([eps, eps], dim=0).to(x.device)
-            experiment1_step = i < experiment1_t
+            experiment2_step = i < experiment2_t
         else:
             eps = th.randn_like(x) * s_noise
         sigma_hat = sigmas[i] * (gamma + 1)
         if gamma > 0:
             x = x + eps * (sigma_hat**2 - sigmas[i] ** 2) ** 0.5
-        denoised = denoiser(x, sigma_hat * s_in, experiment1_step=experiment1_step)
+        denoised = denoiser(x, sigma_hat * s_in, experiment2_step=experiment2_step)
         d = to_d(x, sigma_hat, denoised)
         yield {"x": x, "i": i, "sigma": sigmas[i], "sigma_hat": sigma_hat, "pred_xstart": denoised}
         dt = sigmas[i + 1] - sigma_hat
@@ -297,28 +297,28 @@ def sample_heun(
         else:
             # Heun's method
             x_2 = x + d * dt
-            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in, experiment1_step=experiment1_step)
+            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in, experiment2_step=experiment2_step)
             d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
-        if experiment1 and not experiment1_step:
+        if experiment2 and not experiment2_step:
             samples = diffusion.unscale_channels(x)
-            pcs = experiment1_sampler.output_to_point_clouds(samples)
+            pcs = experiment2_sampler.output_to_point_clouds(samples)
             for j in range(2):
                 pcs[j].set_color_by_dist(pcs[1 - j])
                 fig = plot_point_cloud(pcs[j])
-                path = os.path.join(os.getenv("EXPERIMENT1_TMP_DIR"), f"{j}_{i}.png")
+                path = os.path.join(os.getenv("EXPERIMENT2_TMP_DIR"), f"{j}_{i}.png")
                 fig.savefig(path)
-                experiment1_dict[j].append(path)
+                experiment2_dict[j].append(path)
                 plt.close()
-    if experiment1:
+    if experiment2:
         for j in range(2):
             images = []
-            for file in experiment1_dict[j]:
+            for file in experiment2_dict[j]:
                 images.append(imageio.imread(file))
                 os.remove(file)
             if images:
-                imageio.mimsave(os.path.join(os.getenv("EXPERIMENT1_TMP_DIR"), f"{experiment1_t}_{j}.gif"), images, duration=1.0)
+                imageio.mimsave(os.path.join(os.getenv("EXPERIMENT2_TMP_DIR"), f"{experiment2_t}_{j}.gif"), images, duration=1.0)
     yield {"x": x, "pred_xstart": denoised}
 
 
