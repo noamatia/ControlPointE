@@ -6,3 +6,4 @@ point_e_model_cache/
 lightning_logs/
 wandb/
 point_e/examples/experiment2/
+partnet/
