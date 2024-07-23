@@ -9,12 +9,9 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from control_point_e import ControlPointE
 from pytorch_lightning.callbacks import ModelCheckpoint
-from control_shapenet import (
-    SOURCE_UID,
-    TARGET_UID,
-    ControlShapeNet,
-    partnet_metadata_path,
-)
+from control_shapenet import ControlShapeNet, partnet_metadata_path
+
+from utils import *
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ["WANDB_API_KEY"] = "7b14a62f11dc360ce036cf59b53df0c12cd87f5a"

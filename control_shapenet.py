@@ -1,25 +1,21 @@
-import os
 import json
 import tqdm
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
-from point_e.util.point_cloud import PointCloud
+
+from utils import *
 
 PROMPTS = "prompts"
 UTTERANCE = "utterance"
-SOURCE_UID = "source_uid"
-TARGET_UID = "target_uid"
 SOURCE_MASKS = "source_masks"
 TARGET_MASKS = "target_masks"
 SOURCE_LATENTS = "source_latents"
 TARGET_LATENTS = "target_latents"
-PARTNET_DIR = "/scratch/noam/data_v0"
-PCS_DIR = "/scratch/noam/shapetalk/point_clouds/scaled_to_align_rendering"
 
 
 def partnet_metadata_path(uid):
-    return os.path.join("partnet", uid, "masked_labels.json")
+    return os.path.join(PARTNET_METADATA_DIR, uid, PARTNET_METADATA_JSON)
 
 
 def load_partnet_metadata(uid, part):
@@ -32,14 +28,7 @@ def load_partnet_metadata(uid, part):
 
 def load_pc(partnet_uid, shapenet_uid, num_points, masked_labels):
     src_dir = os.path.join(PARTNET_DIR, partnet_uid)
-    pc = PointCloud.load_partnet(
-        os.path.join(
-            src_dir, "point_sample", "sample-points-all-pts-nor-rgba-10000.txt"
-        ),
-        os.path.join(src_dir, "point_sample", "sample-points-all-label-10000.txt"),
-        os.path.join(PCS_DIR, shapenet_uid + ".npz"),
-        masked_labels,
-    )
+    pc = load_partnet(src_dir, shapenet_uid, masked_labels)
     return pc.random_sample(num_points)
 
 
