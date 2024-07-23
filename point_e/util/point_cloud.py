@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import BinaryIO, Dict, List, Optional, Union
 
 from matplotlib import pyplot as plt
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, LinearSegmentedColormap
 import numpy as np
 import open3d as o3d
 
@@ -199,6 +199,33 @@ class PointCloud:
         self.channels["R"] = np.where(np.isin(np.arange(len(self.coords)), indices), 1.0, 0.0)
         self.channels["G"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
         self.channels["B"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
+
+    def set_color_by_colormap(self):
+        """
+        Set the color of each point based on a custom colormap that transitions from white to red.
+        """
+        # Define the custom colormap
+        cdict = {
+            'red':   [[0.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0]],
+            'green': [[0.0, 1.0, 1.0],
+                      [1.0, 0.0, 0.0]],
+            'blue':  [[0.0, 1.0, 1.0],
+                      [1.0, 0.0, 0.0]]
+        }
+        
+        custom_cmap = LinearSegmentedColormap('WhiteToRed', cdict)
+        
+        # Normalize indices to [0, 1] for colormap
+        normalized_indices = np.linspace(0, 1, len(self.coords))
+        
+        # Get RGBA values from colormap
+        colors = custom_cmap(normalized_indices)
+        
+        # Assign colors to channels
+        self.channels["R"] = colors[:, 0]
+        self.channels["G"] = colors[:, 1]
+        self.channels["B"] = colors[:, 2]
 
     
     @classmethod

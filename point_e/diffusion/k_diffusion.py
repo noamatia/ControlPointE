@@ -145,7 +145,7 @@ def karras_sample_progressive(
         assert sampler == "heun"
         assert shape[0] == 2
         shape = (1, shape[1], shape[2])
-        x_T_path = os.path.join(os.getenv("EXPERIMENT2_DIR"), "x_T.pt")
+        x_T_path = os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "x_T.pt")
         if os.path.exists(x_T_path):
             x_T = th.load(x_T_path)
         else:
@@ -282,8 +282,8 @@ def sample_heun(
         )
         if experiment2:
             assert x.shape[0] == 2
-            os.makedirs(os.path.join(os.getenv("EXPERIMENT2_DIR"), "eps"), exist_ok=True)
-            eps_path = os.path.join(os.getenv("EXPERIMENT2_DIR"), "eps", f"eps_{i}.pt")
+            os.makedirs(os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "eps"), exist_ok=True)
+            eps_path = os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "eps", f"eps_{i}.pt")
             if os.path.exists(eps_path):
                 eps = th.load(eps_path)
             else:
@@ -318,12 +318,17 @@ def sample_heun(
         samples = diffusion.unscale_channels(x)
         pcs = experiment2_sampler.output_to_point_clouds(samples)
         for j in range(2):
-            name = f"{j}" if experiment2_sampler.experiment2_indices is None else f"{j}_masked"
-            with open(os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.ply"), "wb") as f:
+            name = f"{j}" if experiment2_sampler.experiment2_indices is None else f"{j}_{experiment2_sampler.experiment2_indices[-1] + 1}"
+            with open(os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), f"{name}.ply"), "wb") as f:
                 pcs[j].write_ply(f)
             pcs[j].set_color_by_dist(pcs[1 - j])
             fig = plot_point_cloud(pcs[j])
             path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.png")
+            fig.savefig(path)
+            plt.close()
+            pcs[j].set_color_by_colormap()
+            fig = plot_point_cloud(pcs[j])
+            path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}_colormap.png")
             fig.savefig(path)
             plt.close()
     yield {"x": x, "pred_xstart": denoised}
