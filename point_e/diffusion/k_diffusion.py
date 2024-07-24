@@ -318,7 +318,12 @@ def sample_heun(
         samples = diffusion.unscale_channels(x)
         pcs = experiment2_sampler.output_to_point_clouds(samples)
         for j in range(2):
-            name = f"{j}" if experiment2_sampler.experiment2_indices is None else f"{j}_{experiment2_sampler.experiment2_indices[-1] + 1}"
+            if experiment2_sampler.experiment2_indices is None:
+                name = f"{j}"
+            elif experiment2_sampler.precentile is None:
+                name = f"{j}_{experiment2_sampler.experiment2_indices[-1] + 1}"
+            else:
+                name = f"{j}_{experiment2_sampler.precentile}"
             with open(os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), f"{name}.ply"), "wb") as f:
                 pcs[j].write_ply(f)
             pcs[j].set_color_by_dist(pcs[1 - j])
@@ -326,11 +331,10 @@ def sample_heun(
             path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.png")
             fig.savefig(path)
             plt.close()
-            pcs[j].set_color_by_colormap()
-            fig = plot_point_cloud(pcs[j])
-            path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}_colormap.png")
-            fig.savefig(path)
-            plt.close()
+        if experiment2_sampler.experiment2_indices is None:
+            distances = np.sqrt(np.sum((pcs[0].coords - pcs[1].coords)**2, axis=1))
+            sorted_indices = np.argsort(distances)[::-1]
+            np.save(os.path.join(os.getenv("EXPERIMENT2_DIR"), "sorted_indices.npy"), sorted_indices)
     yield {"x": x, "pred_xstart": denoised}
 
 
