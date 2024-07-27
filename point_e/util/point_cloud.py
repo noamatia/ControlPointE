@@ -3,7 +3,10 @@ from dataclasses import dataclass
 from typing import BinaryIO, Dict, List, Optional, Union
 
 import torch
+from matplotlib import pyplot as plt
+from matplotlib.colors import Normalize, LinearSegmentedColormap
 import numpy as np
+import open3d as o3d
 
 from .ply_util import write_ply
 
@@ -238,3 +241,68 @@ class PointCloud:
         """
         return torch.tensor(np.tile(self.mask, (6, 1)), dtype=torch.float32)
     
+    def set_color_by_dist(self, other: "PointCloud"):
+        """
+        Set the color of each point based on the distance to the nearest point
+        in another point cloud.
+        """
+        distances = np.sqrt(np.sum((self.coords - other.coords)**2, axis=1))
+        norm = Normalize(vmin=distances.min(), vmax=distances.max())
+        norm_distances = norm(distances)
+        cmap = plt.get_cmap("turbo")
+        rgb_values = cmap(norm_distances)[:, :3]
+        self.channels["R"] = rgb_values[:, 0]
+        self.channels["G"] = rgb_values[:, 1]
+        self.channels["B"] = rgb_values[:, 2]
+        
+    def set_color_by_indices(self, indices: List[int]):
+        """
+        Set the color of each point based on the given list of indices.
+        Points with indices in the list will be set to red, while the
+        other points will be set to black.
+        """
+        self.channels["R"] = np.where(np.isin(np.arange(len(self.coords)), indices), 1.0, 0.0)
+        self.channels["G"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
+        self.channels["B"] = np.where(np.isin(np.arange(len(self.coords)), indices), 0.0, 0.0)
+
+    def set_color_by_colormap(self):
+        """
+        Set the color of each point based on a custom colormap that transitions from white to red.
+        """
+        # Define the custom colormap
+        cdict = {
+            'red':   [[0.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0]],
+            'green': [[0.0, 1.0, 1.0],
+                      [1.0, 0.0, 0.0]],
+            'blue':  [[0.0, 1.0, 1.0],
+                      [1.0, 0.0, 0.0]]
+        }
+        
+        custom_cmap = LinearSegmentedColormap('WhiteToRed', cdict)
+        
+        # Normalize indices to [0, 1] for colormap
+        normalized_indices = np.linspace(0, 1, len(self.coords))
+        
+        # Get RGBA values from colormap
+        colors = custom_cmap(normalized_indices)
+        
+        # Assign colors to channels
+        self.channels["R"] = colors[:, 0]
+        self.channels["G"] = colors[:, 1]
+        self.channels["B"] = colors[:, 2]
+
+    
+    @classmethod
+    def from_ply(cls, file_path: str) -> "PointCloud":
+        """
+        Read a point cloud from a .ply file.
+
+        :param file_path: path to the .ply file.
+        :return: a PointCloud object.
+        """
+        point_cloud = o3d.io.read_point_cloud(file_path)
+        return PointCloud(coords=np.asarray(point_cloud.points),
+                          channels={"R": np.asarray(point_cloud.colors)[:, 0],
+                                    "G": np.asarray(point_cloud.colors)[:, 1],
+                                    "B": np.asarray(point_cloud.colors)[:, 2]})

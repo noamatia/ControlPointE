@@ -22,8 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+import os
+from matplotlib import pyplot as plt
 import numpy as np
 import torch as th
+
+from point_e.util.plotting import plot_point_cloud
 
 from .gaussian_diffusion import GaussianDiffusion, mean_flat
 
@@ -133,9 +137,21 @@ def karras_sample_progressive(
     s_tmax=float("inf"),
     s_noise=1.0,
     guidance_scale=0.0,
+    experiment2_sampler=None,
 ):
     sigmas = get_sigmas_karras(steps, sigma_min, sigma_max, rho, device=device)
     x_T = th.randn(*shape, device=device) * sigma_max
+    if experiment2_sampler is not None:
+        assert sampler == "heun"
+        assert shape[0] == 2
+        shape = (1, shape[1], shape[2])
+        x_T_path = os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "x_T.pt")
+        if os.path.exists(x_T_path):
+            x_T = th.load(x_T_path)
+        else:
+            x_T = th.randn(*shape, device=device) * sigma_max
+            x_T = th.cat([x_T, x_T], dim=0)
+            th.save(x_T, x_T_path)
     sample_fn = {"heun": sample_heun, "dpm": sample_dpm, "ancestral": sample_euler_ancestral}[
         sampler
     ]
@@ -156,9 +172,9 @@ def karras_sample_progressive(
     elif isinstance(diffusion, GaussianDiffusion):
         model = GaussianToKarrasDenoiser(model, diffusion)
 
-        def denoiser(x_t, sigma):
+        def denoiser(x_t, sigma, experiment2_step=False):
             _, denoised = model.denoise(
-                x_t, sigma, clip_denoised=clip_denoised, model_kwargs=model_kwargs
+                x_t, sigma, clip_denoised=clip_denoised, model_kwargs={**model_kwargs, "experiment2_step": experiment2_step}
             )
             return denoised
 
@@ -167,10 +183,10 @@ def karras_sample_progressive(
 
     if guidance_scale != 0 and guidance_scale != 1:
 
-        def guided_denoiser(x_t, sigma):
+        def guided_denoiser(x_t, sigma, experiment2_step=False):
             x_t = th.cat([x_t, x_t], dim=0)
             sigma = th.cat([sigma, sigma], dim=0)
-            x_0 = denoiser(x_t, sigma)
+            x_0 = denoiser(x_t, sigma, experiment2_step=experiment2_step)
             cond_x_0, uncond_x_0 = th.split(x_0, len(x_0) // 2, dim=0)
             x_0 = uncond_x_0 + guidance_scale * (cond_x_0 - uncond_x_0)
             return x_0
@@ -183,6 +199,8 @@ def karras_sample_progressive(
         x_T,
         sigmas,
         progress=progress,
+        experiment2_sampler=experiment2_sampler,
+        diffusion=diffusion,
         **sampler_args,
     ):
         if isinstance(diffusion, GaussianDiffusion):
@@ -234,13 +252,14 @@ def sample_euler_ancestral(model, x, sigmas, progress=False):
         x = x + th.randn_like(x) * sigma_up
     yield {"x": x, "pred_xstart": x}
 
-
 @th.no_grad()
 def sample_heun(
     denoiser,
     x,
     sigmas,
     progress=False,
+    experiment2_sampler=None,
+    diffusion=None,
     s_churn=0.0,
     s_tmin=0.0,
     s_tmax=float("inf"),
@@ -254,15 +273,30 @@ def sample_heun(
 
         indices = tqdm(indices)
 
+    experiment2 = experiment2_sampler is not None
+    experiment2_t = experiment2_sampler.experiment2_t if experiment2 else None
+    experiment2_step = False
     for i in indices:
         gamma = (
             min(s_churn / (len(sigmas) - 1), 2**0.5 - 1) if s_tmin <= sigmas[i] <= s_tmax else 0.0
         )
-        eps = th.randn_like(x) * s_noise
+        if experiment2:
+            assert x.shape[0] == 2
+            os.makedirs(os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "eps"), exist_ok=True)
+            eps_path = os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), "eps", f"eps_{i}.pt")
+            if os.path.exists(eps_path):
+                eps = th.load(eps_path)
+            else:
+                eps = th.randn((1, x.shape[1], x.shape[2])) * s_noise
+                eps = th.cat([eps, eps], dim=0).to(x.device)
+                th.save(eps, eps_path)
+            experiment2_step = i < experiment2_t
+        else:
+            eps = th.randn_like(x) * s_noise
         sigma_hat = sigmas[i] * (gamma + 1)
         if gamma > 0:
             x = x + eps * (sigma_hat**2 - sigmas[i] ** 2) ** 0.5
-        denoised = denoiser(x, sigma_hat * s_in)
+        denoised = denoiser(x, sigma_hat * s_in, experiment2_step=experiment2_step)
         d = to_d(x, sigma_hat, denoised)
         yield {"x": x, "i": i, "sigma": sigmas[i], "sigma_hat": sigma_hat, "pred_xstart": denoised}
         dt = sigmas[i + 1] - sigma_hat
@@ -272,10 +306,35 @@ def sample_heun(
         else:
             # Heun's method
             x_2 = x + d * dt
-            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in)
+            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in, experiment2_step=experiment2_step)
             d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
+        if experiment2 and experiment2_sampler.experiment2_indices is not None:
+            mask = th.zeros(x.size(2), dtype=th.bool).to(x.device)
+            mask[experiment2_sampler.experiment2_indices] = True
+            x[1] = x[1].where(mask.unsqueeze(0).unsqueeze(0), x[0])
+    if experiment2:
+        samples = diffusion.unscale_channels(x)
+        pcs = experiment2_sampler.output_to_point_clouds(samples)
+        for j in range(2):
+            if experiment2_sampler.experiment2_indices is None:
+                name = f"{j}"
+            elif experiment2_sampler.precentile is None:
+                name = f"{j}_{experiment2_sampler.experiment2_indices[-1] + 1}"
+            else:
+                name = f"{j}_{experiment2_sampler.precentile}"
+            with open(os.path.join(os.getenv("EXPERIMENT2_DIR").replace("experiment2", "experiment2_objs"), f"{name}.ply"), "wb") as f:
+                pcs[j].write_ply(f)
+            pcs[j].set_color_by_dist(pcs[1 - j])
+            fig = plot_point_cloud(pcs[j])
+            path = os.path.join(os.getenv("EXPERIMENT2_DIR"), f"{name}.png")
+            fig.savefig(path)
+            plt.close()
+        if experiment2_sampler.experiment2_indices is None:
+            distances = np.sqrt(np.sum((pcs[0].coords - pcs[1].coords)**2, axis=1))
+            sorted_indices = np.argsort(distances)[::-1]
+            np.save(os.path.join(os.getenv("EXPERIMENT2_DIR"), "sorted_indices.npy"), sorted_indices)
     yield {"x": x, "pred_xstart": denoised}
 
 

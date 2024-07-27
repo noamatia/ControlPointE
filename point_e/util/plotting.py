@@ -14,7 +14,7 @@ def plot_point_cloud(
         (-0.5, -0.5, -0.5),
         (0.5, 0.5, 0.5),
     ),
-    theta: float = None,
+    theta = np.pi * 3 / 2
 ):
     """
     Render a point cloud as a plot to the given image path.
