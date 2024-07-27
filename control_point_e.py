@@ -26,14 +26,15 @@ TARGET = "target"
 MODEL_NAME = "base40M-textvec"
 MASKED_SOURCE = "masked_source"
 MASKED_TARGET = "masked_target"
-LATENT_TYPES = [SOURCE, TARGET, MASKED_SOURCE, MASKED_TARGET]
+# LATENT_TYPES = [SOURCE, TARGET, MASKED_SOURCE, MASKED_TARGET]
+LATENT_TYPES = [SOURCE, TARGET]
 
 
 class ControlPointE(pl.LightningModule):
     def __init__(
         self,
         lr: float,
-        beta: float,
+        # beta: float,
         timesteps: int,
         num_points: int,
         batch_size: int,
@@ -44,9 +45,10 @@ class ControlPointE(pl.LightningModule):
         super().__init__()
         self.lr = lr
         self.dev = dev
-        self.beta = beta
+        # self.beta = beta
         self.timesteps = timesteps
         self.batch_size = batch_size
+        self.cond_drop_prob = cond_drop_prob
         self._init_model(cond_drop_prob, num_points)
         self._init_val_data(val_data_loader)
 
@@ -77,18 +79,19 @@ class ControlPointE(pl.LightningModule):
     def _init_val_data(self, val_data_loader):
         log_data = {lt: [] for lt in LATENT_TYPES}
         for batch in val_data_loader:
-            for prompt, source_mask, target_mask, source_latent, target_latent in zip(
+            # for prompt, source_mask, target_mask, source_latent, target_latent in zip(
+            for prompt, source_latent, target_latent in zip(
                 batch[PROMPTS],
-                batch[SOURCE_MASKS],
-                batch[TARGET_MASKS],
+                # batch[SOURCE_MASKS],
+                # batch[TARGET_MASKS],
                 batch[SOURCE_LATENTS],
                 batch[TARGET_LATENTS],
             ):
                 latents = [
                     source_latent,
                     target_latent,
-                    source_latent * source_mask,
-                    target_latent * target_mask,
+                    # source_latent * source_mask,
+                    # target_latent * target_mask,
                 ]
                 for name, latent in zip(LATENT_TYPES, latents):
                     log_data[name].append(self._plot([latent], prompt))
@@ -96,7 +99,7 @@ class ControlPointE(pl.LightningModule):
 
     def _plot(self, samples, prompt):
         pc = self.sampler.output_to_point_clouds(samples)[0]
-        fig = plot_point_cloud(pc, theta=np.pi * 1 / 2)
+        fig = plot_point_cloud(pc, theta=np.pi * 3 / 2)
         img = wandb.Image(fig, caption=prompt)
         plt.close()
         return img
@@ -112,13 +115,17 @@ class ControlPointE(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.lr)
 
     def training_step(self, batch, batch_idx):
-        prompts, source_masks, target_masks, source_latents, target_latents = (
+        # prompts, source_masks, target_masks, source_latents, target_latents = (
+        prompts, source_latents, target_latents = (
             batch[PROMPTS],
-            batch[SOURCE_MASKS],
-            batch[TARGET_MASKS],
+            # batch[SOURCE_MASKS],
+            # batch[TARGET_MASKS],
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
         )
+        if random.random() < self.cond_drop_prob:
+            prompts = ["" for _ in prompts]
+            source_latents = target_latents.clone()
         terms = self.diffusion.training_losses(
             model=self.model,
             t=self._sample_t(),
@@ -126,20 +133,21 @@ class ControlPointE(pl.LightningModule):
             model_kwargs={TEXTS: prompts, "guidance": source_latents},
         )
         loss = terms["loss"].mean()
-        samples = self._sample(source_latents, prompts, self.batch_size)
-        reg_loss = mean_flat(
-            (target_masks * samples - source_masks * source_latents) ** 2
-        ).mean()
-        train_loss = self.beta * loss + (1 - self.beta) * reg_loss
+        # samples = self._sample(source_latents, prompts, self.batch_size)
+        # reg_loss = mean_flat(
+        #     (target_masks * samples - source_masks * source_latents) ** 2
+        # ).mean()
+        # train_loss = self.beta * loss + (1 - self.beta) * reg_loss
         wandb.log(
             {
                 "loss": loss.item(),
-                "reg_loss": reg_loss.item(),
-                "train_loss": train_loss.item(),
+                # "reg_loss": reg_loss.item(),
+                # "train_loss": train_loss.item(),
             },
             step=None,
         )
-        return train_loss
+        # return train_loss
+        return loss
 
     def validation_step(self, batch, batch_idx):
         assert batch_idx == 0
