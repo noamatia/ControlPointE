@@ -2,6 +2,7 @@ import wandb
 import torch
 import random
 import numpy as np
+from lora import LoRA
 import torch.optim as optim
 import pytorch_lightning as pl
 from matplotlib import pyplot as plt
@@ -13,9 +14,8 @@ from point_e.diffusion.gaussian_diffusion import mean_flat
 from point_e.models.configs import MODEL_CONFIGS, model_from_config
 from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
 from control_shapenet import (
+    SCALES,
     PROMPTS,
-    SOURCE_MASKS,
-    TARGET_MASKS,
     SOURCE_LATENTS,
     TARGET_LATENTS,
 )
@@ -24,16 +24,13 @@ TEXTS = "texts"
 SOURCE = "source"
 TARGET = "target"
 MODEL_NAME = "base40M-textvec"
-MASKED_SOURCE = "masked_source"
-MASKED_TARGET = "masked_target"
-LATENT_TYPES = [SOURCE, TARGET, MASKED_SOURCE, MASKED_TARGET]
+LATENT_TYPES = [SOURCE, TARGET]
 
 
 class ControlPointE(pl.LightningModule):
     def __init__(
         self,
         lr: float,
-        beta: float,
         timesteps: int,
         num_points: int,
         batch_size: int,
@@ -44,7 +41,6 @@ class ControlPointE(pl.LightningModule):
         super().__init__()
         self.lr = lr
         self.dev = dev
-        self.beta = beta
         self.timesteps = timesteps
         self.batch_size = batch_size
         self._init_model(cond_drop_prob, num_points)
@@ -59,6 +55,8 @@ class ControlPointE(pl.LightningModule):
         )
         self.model.load_state_dict(load_checkpoint(MODEL_NAME, self.dev))
         self.model.create_control_layers()
+        self.model.freeze_all_parameters()
+        self.lora = LoRA(self.model, 4, 1).to(self.dev)
         self.sampler = PointCloudSampler(
             s_churn=[3],
             sigma_max=[120],
@@ -77,26 +75,17 @@ class ControlPointE(pl.LightningModule):
     def _init_val_data(self, val_data_loader):
         log_data = {lt: [] for lt in LATENT_TYPES}
         for batch in val_data_loader:
-            for prompt, source_mask, target_mask, source_latent, target_latent in zip(
-                batch[PROMPTS],
-                batch[SOURCE_MASKS],
-                batch[TARGET_MASKS],
-                batch[SOURCE_LATENTS],
-                batch[TARGET_LATENTS],
+            for prompt, source_latent, target_latent in zip(
+                batch[PROMPTS], batch[SOURCE_LATENTS], batch[TARGET_LATENTS]
             ):
-                latents = [
-                    source_latent,
-                    target_latent,
-                    source_latent * source_mask,
-                    target_latent * target_mask,
-                ]
+                latents = [source_latent, target_latent]
                 for name, latent in zip(LATENT_TYPES, latents):
                     log_data[name].append(self._plot([latent], prompt))
         wandb.log(log_data, step=None)
 
     def _plot(self, samples, prompt):
         pc = self.sampler.output_to_point_clouds(samples)[0]
-        fig = plot_point_cloud(pc, theta=np.pi * 1 / 2)
+        fig = plot_point_cloud(pc, theta=np.pi * 3 / 2)
         img = wandb.Image(fig, caption=prompt)
         plt.close()
         return img
@@ -109,48 +98,40 @@ class ControlPointE(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.lr)
+        return optim.Adam(self.lora.prepare_optimizer_params(), lr=self.lr)
 
     def training_step(self, batch, batch_idx):
-        prompts, source_masks, target_masks, source_latents, target_latents = (
+        scales, prompts, source_latents, target_latents = (
+            batch[SCALES],
             batch[PROMPTS],
-            batch[SOURCE_MASKS],
-            batch[TARGET_MASKS],
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
         )
-        terms = self.diffusion.training_losses(
-            model=self.model,
-            t=self._sample_t(),
-            x_start=target_latents,
-            model_kwargs={TEXTS: prompts, "guidance": source_latents},
-        )
+        assert torch.all(scales == 1) or torch.all(scales == -1)
+        self.lora.set_lora_slider(scales[0])
+        with self.lora:
+            terms = self.diffusion.training_losses(
+                model=self.model,
+                t=self._sample_t(),
+                x_start=target_latents,
+                model_kwargs={TEXTS: prompts, "guidance": source_latents},
+            )
         loss = terms["loss"].mean()
-        samples = self._sample(source_latents, prompts, self.batch_size)
-        reg_loss = mean_flat(
-            (target_masks * samples - source_masks * source_latents) ** 2
-        ).mean()
-        train_loss = self.beta * loss + (1 - self.beta) * reg_loss
-        wandb.log(
-            {
-                "loss": loss.item(),
-                "reg_loss": reg_loss.item(),
-                "train_loss": train_loss.item(),
-            },
-            step=None,
-        )
-        return train_loss
+        wandb.log({"loss": loss.item()}, step=None)
+        return loss
 
     def validation_step(self, batch, batch_idx):
         assert batch_idx == 0
         outputs = []
-        self.model.eval()
         with torch.no_grad():
-            for prompt, source_latent in zip(batch[PROMPTS], batch[SOURCE_LATENTS]):
-                samples = self._sample(source_latent, [prompt], 1)
+            for scale, prompt, source_latent in zip(
+                batch[SCALES], batch[PROMPTS], batch[SOURCE_LATENTS]
+            ):
+                self.lora.set_lora_slider(scale)
+                with self.lora:
+                    samples = self._sample(source_latent, [prompt], 1)
                 outputs.append(self._plot(samples, prompt))
         wandb.log({"output": outputs}, step=None)
-        self.model.train()
 
     def _sample(self, source_latents, prompts, batch_size):
         samples = None

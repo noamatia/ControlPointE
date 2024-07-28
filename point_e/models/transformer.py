@@ -22,12 +22,9 @@ def init_linear(l, stddev):
 
 
 class QKVMultiheadAttention(nn.Module):
-    def __init__(self,
-                 *,
-                 device: torch.device,
-                 dtype: torch.dtype,
-                 heads: int,
-                 n_ctx: int):
+    def __init__(
+        self, *, device: torch.device, dtype: torch.dtype, heads: int, n_ctx: int
+    ):
         super().__init__()
         self.device = device
         self.dtype = dtype
@@ -64,15 +61,18 @@ class QKVMultiheadAttention(nn.Module):
 
 
 class MultiheadAttentionBase(nn.Module):
-    def __init__(self,
-                 *,
-                 device: torch.device,
-                 dtype: torch.dtype,
-                 n_ctx: int, width: int,
-                 heads: int,
-                 init_scale: float,
-                 c_proj: nn.Linear = None,
-                 attention: QKVMultiheadAttention = None):
+    def __init__(
+        self,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+        n_ctx: int,
+        width: int,
+        heads: int,
+        init_scale: float,
+        c_proj: nn.Linear = None,
+        attention: QKVMultiheadAttention = None,
+    ):
         super().__init__()
         self.device = device
         self.dtype = dtype
@@ -81,8 +81,11 @@ class MultiheadAttentionBase(nn.Module):
         self.heads = heads
         self.init_scale = init_scale
         self.c_proj = self.build_linear(width) if c_proj is None else c_proj
-        self.attention = QKVMultiheadAttention(
-            device=device, dtype=dtype, heads=heads, n_ctx=n_ctx) if attention is None else attention
+        self.attention = (
+            QKVMultiheadAttention(device=device, dtype=dtype, heads=heads, n_ctx=n_ctx)
+            if attention is None
+            else attention
+        )
 
     def forward(self, x, x_guidance):
         qkv = self.build_qkv(x, x_guidance)
@@ -95,15 +98,15 @@ class MultiheadAttentionBase(nn.Module):
         raise NotImplementedError
 
     def build_linear(self, out_features):
-        linear = nn.Linear(self.width, out_features,
-                           device=self.device, dtype=self.dtype)
+        linear = nn.Linear(
+            self.width, out_features, device=self.device, dtype=self.dtype
+        )
         init_linear(linear, self.init_scale)
         return linear
 
 
 class MultiheadAttention(MultiheadAttentionBase):
-    def __init__(self,
-                 **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.c_qkv = self.build_linear(self.width * 3)
 
@@ -113,9 +116,7 @@ class MultiheadAttention(MultiheadAttentionBase):
 
 
 class MultiheadCrossEntityAttention(MultiheadAttentionBase):
-    def __init__(self,
-                 c_qkv: nn.Linear,
-                 **kwargs):
+    def __init__(self, c_qkv: nn.Linear, **kwargs):
         super().__init__(**kwargs)
         self.c_kv = self.build_linear(self.width * 2)
         self.c_q1 = self.build_linear(self.width)
@@ -147,11 +148,13 @@ class MultiheadCrossEntityAttention(MultiheadAttentionBase):
         return torch.cat([q, kv], dim=-1)
 
     def build_zero_conv(self):
-        return nn.Conv1d(in_channels=self.n_ctx,
-                         out_channels=self.n_ctx,
-                         kernel_size=1,
-                         device=self.device,
-                         dtype=self.dtype)
+        return nn.Conv1d(
+            in_channels=self.n_ctx,
+            out_channels=self.n_ctx,
+            kernel_size=1,
+            device=self.device,
+            dtype=self.dtype,
+        )
 
     def init_weights(self, c_qkv):
         with torch.no_grad():
@@ -167,12 +170,9 @@ class MultiheadCrossEntityAttention(MultiheadAttentionBase):
 
 
 class MLP(nn.Module):
-    def __init__(self,
-                 *,
-                 device: torch.device,
-                 dtype: torch.dtype,
-                 width: int,
-                 init_scale: float):
+    def __init__(
+        self, *, device: torch.device, dtype: torch.dtype, width: int, init_scale: float
+    ):
         super().__init__()
         self.width = width
         self.c_fc = nn.Linear(width, width * 4, device=device, dtype=dtype)
@@ -186,18 +186,20 @@ class MLP(nn.Module):
 
 
 class ResidualAttentionBlockBase(nn.Module):
-    def __init__(self,
-                 *,
-                 device: torch.device,
-                 dtype: torch.dtype,
-                 n_ctx: int,
-                 width: int,
-                 heads: int,
-                 init_scale: float = 1.0,
-                 attn: MultiheadAttentionBase = None,
-                 ln_1: nn.LayerNorm = None,
-                 mlp: MLP = None,
-                 ln_2: nn.LayerNorm = None):
+    def __init__(
+        self,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+        n_ctx: int,
+        width: int,
+        heads: int,
+        init_scale: float = 1.0,
+        attn: MultiheadAttentionBase = None,
+        ln_1: nn.LayerNorm = None,
+        mlp: MLP = None,
+        ln_2: nn.LayerNorm = None,
+    ):
         super().__init__()
         self.device = device
         self.dtype = dtype
@@ -205,14 +207,29 @@ class ResidualAttentionBlockBase(nn.Module):
         self.width = width
         self.heads = heads
         self.init_scale = init_scale
-        self.attn = MultiheadAttention(
-            device=device, dtype=dtype, n_ctx=n_ctx, width=width, heads=heads, init_scale=init_scale) if attn is None else attn
-        self.ln_1 = nn.LayerNorm(width, device=device,
-                                 dtype=dtype) if ln_1 is None else ln_1
-        self.mlp = MLP(device=device, dtype=dtype,
-                       width=width, init_scale=init_scale) if mlp is None else mlp
-        self.ln_2 = nn.LayerNorm(width, device=device,
-                                 dtype=dtype) if ln_2 is None else ln_2
+        self.attn = (
+            MultiheadAttention(
+                device=device,
+                dtype=dtype,
+                n_ctx=n_ctx,
+                width=width,
+                heads=heads,
+                init_scale=init_scale,
+            )
+            if attn is None
+            else attn
+        )
+        self.ln_1 = (
+            nn.LayerNorm(width, device=device, dtype=dtype) if ln_1 is None else ln_1
+        )
+        self.mlp = (
+            MLP(device=device, dtype=dtype, width=width, init_scale=init_scale)
+            if mlp is None
+            else mlp
+        )
+        self.ln_2 = (
+            nn.LayerNorm(width, device=device, dtype=dtype) if ln_2 is None else ln_2
+        )
 
     def forward(self, x, x_guidance):
         x = x + self.apply_attention(x, x_guidance)
@@ -231,11 +248,9 @@ class ResidualAttentionBlock(ResidualAttentionBlockBase):
 
 
 class ResidualCrossEntityAttentionBlock(ResidualAttentionBlockBase):
-    def __init__(self,
-                 **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.attn = MultiheadCrossEntityAttention.from_multihead_attention(
-            self.attn)
+        self.attn = MultiheadCrossEntityAttention.from_multihead_attention(self.attn)
         self.ln1_guidance = copy.deepcopy(self.ln_1)
 
     @classmethod
@@ -298,12 +313,14 @@ class Transformer(nn.Module):
                 x = resblock(x, None)
             else:
                 ctrl_resblock = self.ctrl_resblocks[i - self.first_ctrl_idx]
-                x = ctrl_resblock(x, kwargs['guidance'])
+                x = ctrl_resblock(x, kwargs["guidance"])
         return x
 
     def create_control_layers(self, ctrl_layers=None):
         self.ctrl_layers = self.layers if ctrl_layers is None else ctrl_layers
-        assert self.ctrl_layers <= self.layers, f"ctrl_layers ({self.ctrl_layers}) must be <= layers ({self.layers})"
+        assert (
+            self.ctrl_layers <= self.layers
+        ), f"ctrl_layers ({self.ctrl_layers}) must be <= layers ({self.layers})"
         self.first_ctrl_idx = self.layers - self.ctrl_layers
         self.ctrl_resblocks = nn.ModuleList(
             [
@@ -337,8 +354,10 @@ class PointDiffusionTransformer(nn.Module):
         self.n_ctx = n_ctx
         self.time_token_cond = time_token_cond
         self.time_embed = MLP(
-            device=device, dtype=dtype, width=width, init_scale=init_scale *
-            math.sqrt(1.0 / width)
+            device=device,
+            dtype=dtype,
+            width=width,
+            init_scale=init_scale * math.sqrt(1.0 / width),
         )
         self.ln_pre = nn.LayerNorm(width, device=device, dtype=dtype)
         self.backbone = Transformer(
@@ -351,10 +370,8 @@ class PointDiffusionTransformer(nn.Module):
             init_scale=init_scale,
         )
         self.ln_post = nn.LayerNorm(width, device=device, dtype=dtype)
-        self.input_proj = nn.Linear(
-            input_channels, width, device=device, dtype=dtype)
-        self.output_proj = nn.Linear(
-            width, output_channels, device=device, dtype=dtype)
+        self.input_proj = nn.Linear(input_channels, width, device=device, dtype=dtype)
+        self.output_proj = nn.Linear(width, output_channels, device=device, dtype=dtype)
         with torch.no_grad():
             self.output_proj.weight.zero_()
             self.output_proj.bias.zero_()
@@ -378,13 +395,14 @@ class PointDiffusionTransformer(nn.Module):
             if as_token
         ]
         if self.guided:
-            kwargs['guidance'] = self.preprocess(
-                kwargs['guidance'].reshape(x.shape), cond_as_token, extra_tokens)
+            kwargs["guidance"] = self.preprocess(
+                kwargs["guidance"].reshape(x.shape), cond_as_token, extra_tokens
+            )
         h = self.preprocess(x, cond_as_token, extra_tokens)
         h = self.backbone(h, **kwargs)
         h = self.ln_post(h)
         if len(extra_tokens):
-            h = h[:, sum(h.shape[1] for h in extra_tokens):]
+            h = h[:, sum(h.shape[1] for h in extra_tokens) :]
         h = self.output_proj(h)
         return h.permute(0, 2, 1)
 
@@ -402,14 +420,15 @@ class PointDiffusionTransformer(nn.Module):
         self.guided = True
         self.backbone.create_control_layers(ctrl_layers)
         for name, param in self.named_parameters():
-            if name.startswith('backbone'):
-                param.requires_grad = True
-            elif name.startswith('ln_post'):
-                param.requires_grad = True
-            elif name.startswith('output_proj'):
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+            param.requires_grad = self.is_trainable_param(name)
+
+    @staticmethod
+    def is_trainable_param(name):
+        return (
+            name.startswith("backbone")
+            or name.startswith("ln_post")
+            or name.startswith("output_proj")
+        )
 
     def freeze_all_parameters(self):
         for param in self.parameters():
@@ -418,7 +437,8 @@ class PointDiffusionTransformer(nn.Module):
     def print_parameters_status(self):
         for name, param in self.named_parameters():
             print(
-                f"name: {name}, shape: {param.shape}, req grad: {param.requires_grad}")
+                f"name: {name}, shape: {param.shape}, req grad: {param.requires_grad}"
+            )
 
 
 class CLIPImagePointDiffusionTransformer(PointDiffusionTransformer):
@@ -434,20 +454,24 @@ class CLIPImagePointDiffusionTransformer(PointDiffusionTransformer):
         cache_dir: Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(device=device, dtype=dtype,
-                         n_ctx=n_ctx + int(token_cond), **kwargs)
+        super().__init__(
+            device=device, dtype=dtype, n_ctx=n_ctx + int(token_cond), **kwargs
+        )
         self.n_ctx = n_ctx
         self.token_cond = token_cond
         self.clip = (FrozenImageCLIP if frozen_clip else ImageCLIP)(
-            device, cache_dir=cache_dir)
+            device, cache_dir=cache_dir
+        )
         self.clip_embed = nn.Linear(
             self.clip.feature_dim, self.backbone.width, device=device, dtype=dtype
         )
         self.cond_drop_prob = cond_drop_prob
 
-    def cached_model_kwargs(self, batch_size: int, model_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def cached_model_kwargs(
+        self, batch_size: int, model_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         with torch.no_grad():
-            return dict(embeddings=self.clip(batch_size, texts=model_kwargs['texts']))
+            return dict(embeddings=self.clip(batch_size, texts=model_kwargs["texts"]))
 
     def forward(
         self,
@@ -469,8 +493,9 @@ class CLIPImagePointDiffusionTransformer(PointDiffusionTransformer):
         assert x.shape[-1] == self.n_ctx
 
         t_embed = self.time_embed(timestep_embedding(t, self.backbone.width))
-        clip_out = self.clip(batch_size=len(x), images=images,
-                             texts=texts, embeddings=embeddings)
+        clip_out = self.clip(
+            batch_size=len(x), images=images, texts=texts, embeddings=embeddings
+        )
         assert len(clip_out.shape) == 2 and clip_out.shape[0] == x.shape[0]
 
         if self.training:
@@ -502,21 +527,29 @@ class CLIPImageGridPointDiffusionTransformer(PointDiffusionTransformer):
             device,
             cache_dir=cache_dir,
         )
-        super().__init__(device=device, dtype=dtype,
-                         n_ctx=n_ctx + clip.grid_size**2, **kwargs)
+        super().__init__(
+            device=device, dtype=dtype, n_ctx=n_ctx + clip.grid_size**2, **kwargs
+        )
         self.n_ctx = n_ctx
         self.clip = clip
         self.clip_embed = nn.Sequential(
             nn.LayerNorm(
-                normalized_shape=(self.clip.grid_feature_dim,
-                                  ), device=device, dtype=dtype
+                normalized_shape=(self.clip.grid_feature_dim,),
+                device=device,
+                dtype=dtype,
             ),
-            nn.Linear(self.clip.grid_feature_dim,
-                      self.backbone.width, device=device, dtype=dtype),
+            nn.Linear(
+                self.clip.grid_feature_dim,
+                self.backbone.width,
+                device=device,
+                dtype=dtype,
+            ),
         )
         self.cond_drop_prob = cond_drop_prob
 
-    def cached_model_kwargs(self, batch_size: int, model_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def cached_model_kwargs(
+        self, batch_size: int, model_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         _ = batch_size
         with torch.no_grad():
             return dict(embeddings=self.clip.embed_images_grid(model_kwargs["images"]))
@@ -535,8 +568,12 @@ class CLIPImageGridPointDiffusionTransformer(PointDiffusionTransformer):
         :param embeddings: a batch of CLIP latent grids to condition on.
         :return: an [N x C' x T] tensor.
         """
-        assert images is not None or embeddings is not None, "must specify images or embeddings"
-        assert images is None or embeddings is None, "cannot specify both images and embeddings"
+        assert (
+            images is not None or embeddings is not None
+        ), "must specify images or embeddings"
+        assert (
+            images is None or embeddings is None
+        ), "cannot specify both images and embeddings"
         assert x.shape[-1] == self.n_ctx
 
         t_embed = self.time_embed(timestep_embedding(t, self.backbone.width))
@@ -579,15 +616,19 @@ class UpsamplePointDiffusionTransformer(PointDiffusionTransformer):
 
         self.register_buffer(
             "channel_scales",
-            torch.tensor(channel_scales, dtype=dtype, device=device)
-            if channel_scales is not None
-            else None,
+            (
+                torch.tensor(channel_scales, dtype=dtype, device=device)
+                if channel_scales is not None
+                else None
+            ),
         )
         self.register_buffer(
             "channel_biases",
-            torch.tensor(channel_biases, dtype=dtype, device=device)
-            if channel_biases is not None
-            else None,
+            (
+                torch.tensor(channel_biases, dtype=dtype, device=device)
+                if channel_biases is not None
+                else None
+            ),
         )
 
     def forward(self, x: torch.Tensor, t: torch.Tensor, *, low_res: torch.Tensor):
@@ -627,22 +668,30 @@ class CLIPImageGridUpsamplePointDiffusionTransformer(UpsamplePointDiffusionTrans
             device,
             cache_dir=cache_dir,
         )
-        super().__init__(device=device, dtype=dtype,
-                         n_ctx=n_ctx + clip.grid_size**2, **kwargs)
+        super().__init__(
+            device=device, dtype=dtype, n_ctx=n_ctx + clip.grid_size**2, **kwargs
+        )
         self.n_ctx = n_ctx
 
         self.clip = clip
         self.clip_embed = nn.Sequential(
             nn.LayerNorm(
-                normalized_shape=(self.clip.grid_feature_dim,
-                                  ), device=device, dtype=dtype
+                normalized_shape=(self.clip.grid_feature_dim,),
+                device=device,
+                dtype=dtype,
             ),
-            nn.Linear(self.clip.grid_feature_dim,
-                      self.backbone.width, device=device, dtype=dtype),
+            nn.Linear(
+                self.clip.grid_feature_dim,
+                self.backbone.width,
+                device=device,
+                dtype=dtype,
+            ),
         )
         self.cond_drop_prob = cond_drop_prob
 
-    def cached_model_kwargs(self, batch_size: int, model_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def cached_model_kwargs(
+        self, batch_size: int, model_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         if "images" not in model_kwargs:
             zero_emb = torch.zeros(
                 [batch_size, self.clip.grid_feature_dim, self.clip.grid_size**2],
@@ -696,7 +745,10 @@ class CLIPImageGridUpsamplePointDiffusionTransformer(UpsamplePointDiffusionTrans
         clip_out = clip_out.permute(0, 2, 1)  # NCL -> NLC
         clip_embed = self.clip_embed(clip_out)
 
-        cond = [(t_embed, self.time_token_cond),
-                (clip_embed, True), (low_res_embed, True)]
+        cond = [
+            (t_embed, self.time_token_cond),
+            (clip_embed, True),
+            (low_res_embed, True),
+        ]
         kwargs = dict(guidance=guidance) if guidance is not None else {}
         return self._forward_with_cond(x, cond, **kwargs)
