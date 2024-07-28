@@ -1,41 +1,41 @@
-source_uid,target_uid,utterance,scale
-chair/ShapeNet/fd9c60e969f83e6086debb0a33c851f8,chair/ShapeNet/c56bca4b7f353ad86debb0a33c851f8,a ladderback chair without armrests,1
-chair/ShapeNet/c56bca4b7f353ad86debb0a33c851f8,chair/ShapeNet/fd9c60e969f83e6086debb0a33c851f8,a ladderback chair with armrests,-1
-chair/ShapeNet/ea04a5915e3982aad7f7a4c4609b0913,chair/ShapeNet/675aaa5b883e2398d7f7a4c4609b0913,an office chair without armrests,1
-chair/ShapeNet/675aaa5b883e2398d7f7a4c4609b0913,chair/ShapeNet/ea04a5915e3982aad7f7a4c4609b0913,an office chair with armrests,-1
-chair/ShapeNet/f199965dc6746de38b01ef724ff374fa,chair/ShapeNet/fbca73a2c226a86a593a4d04856c4691,a chair without armrests,1
-chair/ShapeNet/fbca73a2c226a86a593a4d04856c4691,chair/ShapeNet/f199965dc6746de38b01ef724ff374fa,a chair with armrests,-1
-chair/ShapeNet/a67a09662c39430bc8687ff9b0b4e4ac,chair/ShapeNet/75ea5a697313a8c214c2f69de20984ee,a chair without armrests,1
-chair/ShapeNet/75ea5a697313a8c214c2f69de20984ee,chair/ShapeNet/a67a09662c39430bc8687ff9b0b4e4ac,a chair with armrests,-1
-chair/ShapeNet/e4cc5cee7b011df316037b4c09d66880,chair/ShapeNet/f4268a28d2a837a1167c009da6daa010,a chair without armrests,1
-chair/ShapeNet/f4268a28d2a837a1167c009da6daa010,chair/ShapeNet/e4cc5cee7b011df316037b4c09d66880,a chair with armrests,-1
-chair/ShapeNet/cee98619dbdb0e34c5fc2b846c38d941,chair/ShapeNet/d38129a3301d31350b1fc43ca5e85e,a chair without armrests,1
-chair/ShapeNet/d38129a3301d31350b1fc43ca5e85e,chair/ShapeNet/cee98619dbdb0e34c5fc2b846c38d941,a chair with armrests,-1
-chair/ShapeNet/bdd51e6d7ff84be7492d9da2668ec34c,chair/ShapeNet/ea3723766e96331ff91663a74ccd2338,an office chair without armrests,1
-chair/ShapeNet/ea3723766e96331ff91663a74ccd2338,chair/ShapeNet/bdd51e6d7ff84be7492d9da2668ec34c,an office chair with armrests,-1
-chair/ShapeNet/9e519ddc82bb9417813635269a32e293,chair/ShapeNet/d107532567ee3f316663d1953862c637,a chair without armrests,1
-chair/ShapeNet/d107532567ee3f316663d1953862c637,chair/ShapeNet/9e519ddc82bb9417813635269a32e293,a chair with armrests,-1
-chair/ShapeNet/341c9b0583d31770492d9da2668ec34c,chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,an office chair without armrests,1
-chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,chair/ShapeNet/341c9b0583d31770492d9da2668ec34c,an office chair with armrests,-1
-chair/ShapeNet/f4a2478ebfac3e56b0957d845ac33749,chair/ShapeNet/ca23c31de817db9b67981fccd6325b88,a chair without armrests,1
-chair/ShapeNet/ca23c31de817db9b67981fccd6325b88,chair/ShapeNet/f4a2478ebfac3e56b0957d845ac33749,a chair with armrests,-1
-chair/ShapeNet/55e6d1251fc63e1f71a782a4379556c7,chair/ShapeNet/ed948a3d2ece4b3b71a782a4379556c7,a swivel chair without armrests,1
-chair/ShapeNet/ed948a3d2ece4b3b71a782a4379556c7,chair/ShapeNet/55e6d1251fc63e1f71a782a4379556c7,a swivel chair with armrests,-1
-chair/ShapeNet/8ad35dbc44f40be1492d9da2668ec34c,chair/ShapeNet/bdaaebf065b112da492d9da2668ec34c,a chair without armrests,1
-chair/ShapeNet/bdaaebf065b112da492d9da2668ec34c,chair/ShapeNet/8ad35dbc44f40be1492d9da2668ec34c,a chair with armrests,-1
-chair/ShapeNet/d89e39192db6fa78492d9da2668ec34c,chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,an office chair without armrests,1
-chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,chair/ShapeNet/d89e39192db6fa78492d9da2668ec34c,an office chair with armrests,-1
-chair/ShapeNet/e564f393acf979683c2e50348f23d3d,chair/ShapeNet/5c9b4af9d0e9c132b161f36d4e309050,a cantilever chair without armrests,1
-chair/ShapeNet/5c9b4af9d0e9c132b161f36d4e309050,chair/ShapeNet/e564f393acf979683c2e50348f23d3d,a cantilever chair with armrests,-1
-chair/ShapeNet/ef03458b97c8775b492d9da2668ec34c,chair/ShapeNet/969375970515e5f6492d9da2668ec34c,an office chair without armrests,1
-chair/ShapeNet/969375970515e5f6492d9da2668ec34c,chair/ShapeNet/ef03458b97c8775b492d9da2668ec34c,an office chair with armrests,-1
-chair/ShapeNet/d69aad24d253474dc984897483a49e2b,chair/ShapeNet/8c4ffe44076e9d4a15f62f0f1afbe530,a chair without armrests,1
-chair/ShapeNet/8c4ffe44076e9d4a15f62f0f1afbe530,chair/ShapeNet/d69aad24d253474dc984897483a49e2b,a chair with armrests,-1
-chair/ShapeNet/35e8b034d84f60cb4d226702c1bfe9e2,chair/ShapeNet/4c6c364af4b52751ca6910e4922d61aa,a chair without armrests,1
-chair/ShapeNet/4c6c364af4b52751ca6910e4922d61aa,chair/ShapeNet/35e8b034d84f60cb4d226702c1bfe9e2,a chair with armrests,-1
-chair/ShapeNet/fc3d4268406b396e71a782a4379556c7,chair/ShapeNet/c4ebef05a72fc4f39d62eb3fdc2d3f8a,a chair without armrests,1
-chair/ShapeNet/c4ebef05a72fc4f39d62eb3fdc2d3f8a,chair/ShapeNet/fc3d4268406b396e71a782a4379556c7,a chair with armrests,-1
-chair/ShapeNet/bc61ea1b9348f456492d9da2668ec34c,chair/ShapeNet/64e77e9e5887ce95492d9da2668ec34c,an office chair without armrests,1
-chair/ShapeNet/64e77e9e5887ce95492d9da2668ec34c,chair/ShapeNet/bc61ea1b9348f456492d9da2668ec34c,an office chair with armrests,-1
-chair/ShapeNet/24bbe7f32727901aa6fee8e2140acec9,chair/ShapeNet/9c7b2ed3770d1a6ea6fee8e2140acec9,an office chair without armrests,1
-chair/ShapeNet/9c7b2ed3770d1a6ea6fee8e2140acec9,chair/ShapeNet/24bbe7f32727901aa6fee8e2140acec9,an office chair with armrests,-1
+source_uid,target_uid,utterance,scale,chamfer_distance
+chair/ShapeNet/fd9c60e969f83e6086debb0a33c851f8,chair/ShapeNet/c56bca4b7f353ad86debb0a33c851f8,a ladderback chair without armrests,1,2.1291865025542993
+chair/ShapeNet/c56bca4b7f353ad86debb0a33c851f8,chair/ShapeNet/fd9c60e969f83e6086debb0a33c851f8,a ladderback chair with armrests,-1,0.168057535039145
+chair/ShapeNet/ea04a5915e3982aad7f7a4c4609b0913,chair/ShapeNet/675aaa5b883e2398d7f7a4c4609b0913,an office chair without armrests,1,1.478990682247567
+chair/ShapeNet/675aaa5b883e2398d7f7a4c4609b0913,chair/ShapeNet/ea04a5915e3982aad7f7a4c4609b0913,an office chair with armrests,-1,0.18747203727332504
+chair/ShapeNet/f199965dc6746de38b01ef724ff374fa,chair/ShapeNet/fbca73a2c226a86a593a4d04856c4691,a chair without armrests,1,3.5937309824908814
+chair/ShapeNet/fbca73a2c226a86a593a4d04856c4691,chair/ShapeNet/f199965dc6746de38b01ef724ff374fa,a chair with armrests,-1,1.3320276277942538
+chair/ShapeNet/a67a09662c39430bc8687ff9b0b4e4ac,chair/ShapeNet/75ea5a697313a8c214c2f69de20984ee,a chair without armrests,1,1.8996473067346098
+chair/ShapeNet/75ea5a697313a8c214c2f69de20984ee,chair/ShapeNet/a67a09662c39430bc8687ff9b0b4e4ac,a chair with armrests,-1,1.4143072354571742
+chair/ShapeNet/e4cc5cee7b011df316037b4c09d66880,chair/ShapeNet/f4268a28d2a837a1167c009da6daa010,a chair without armrests,1,4.170428521221168
+chair/ShapeNet/f4268a28d2a837a1167c009da6daa010,chair/ShapeNet/e4cc5cee7b011df316037b4c09d66880,a chair with armrests,-1,1.4244168671017068
+chair/ShapeNet/cee98619dbdb0e34c5fc2b846c38d941,chair/ShapeNet/d38129a3301d31350b1fc43ca5e85e,a chair without armrests,1,1.6962962756803384
+chair/ShapeNet/d38129a3301d31350b1fc43ca5e85e,chair/ShapeNet/cee98619dbdb0e34c5fc2b846c38d941,a chair with armrests,-1,1.3056584891030851
+chair/ShapeNet/bdd51e6d7ff84be7492d9da2668ec34c,chair/ShapeNet/ea3723766e96331ff91663a74ccd2338,an office chair without armrests,1,1.672824186401529
+chair/ShapeNet/ea3723766e96331ff91663a74ccd2338,chair/ShapeNet/bdd51e6d7ff84be7492d9da2668ec34c,an office chair with armrests,-1,0.783369746770417
+chair/ShapeNet/9e519ddc82bb9417813635269a32e293,chair/ShapeNet/d107532567ee3f316663d1953862c637,a chair without armrests,1,4.152289464202883
+chair/ShapeNet/d107532567ee3f316663d1953862c637,chair/ShapeNet/9e519ddc82bb9417813635269a32e293,a chair with armrests,-1,0.3892822521280156
+chair/ShapeNet/341c9b0583d31770492d9da2668ec34c,chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,an office chair without armrests,1,0.7310723147422347
+chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,chair/ShapeNet/341c9b0583d31770492d9da2668ec34c,an office chair with armrests,-1,0.42675673212138254
+chair/ShapeNet/f4a2478ebfac3e56b0957d845ac33749,chair/ShapeNet/ca23c31de817db9b67981fccd6325b88,a chair without armrests,1,5.510440408828771
+chair/ShapeNet/ca23c31de817db9b67981fccd6325b88,chair/ShapeNet/f4a2478ebfac3e56b0957d845ac33749,a chair with armrests,-1,0.4422751043517942
+chair/ShapeNet/55e6d1251fc63e1f71a782a4379556c7,chair/ShapeNet/ed948a3d2ece4b3b71a782a4379556c7,a swivel chair without armrests,1,2.0153500656617576
+chair/ShapeNet/ed948a3d2ece4b3b71a782a4379556c7,chair/ShapeNet/55e6d1251fc63e1f71a782a4379556c7,a swivel chair with armrests,-1,0.5203157459779955
+chair/ShapeNet/8ad35dbc44f40be1492d9da2668ec34c,chair/ShapeNet/bdaaebf065b112da492d9da2668ec34c,a chair without armrests,1,1.137012751572875
+chair/ShapeNet/bdaaebf065b112da492d9da2668ec34c,chair/ShapeNet/8ad35dbc44f40be1492d9da2668ec34c,a chair with armrests,-1,0.39497108904574063
+chair/ShapeNet/d89e39192db6fa78492d9da2668ec34c,chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,an office chair without armrests,1,0.7638223352601188
+chair/ShapeNet/1eb1a8acd4185f49492d9da2668ec34c,chair/ShapeNet/d89e39192db6fa78492d9da2668ec34c,an office chair with armrests,-1,0.17979395531768133
+chair/ShapeNet/e564f393acf979683c2e50348f23d3d,chair/ShapeNet/5c9b4af9d0e9c132b161f36d4e309050,a cantilever chair without armrests,1,1.9173628811329575
+chair/ShapeNet/5c9b4af9d0e9c132b161f36d4e309050,chair/ShapeNet/e564f393acf979683c2e50348f23d3d,a cantilever chair with armrests,-1,0.2991945448427943
+chair/ShapeNet/ef03458b97c8775b492d9da2668ec34c,chair/ShapeNet/969375970515e5f6492d9da2668ec34c,an office chair without armrests,1,0.8970448101295057
+chair/ShapeNet/969375970515e5f6492d9da2668ec34c,chair/ShapeNet/ef03458b97c8775b492d9da2668ec34c,an office chair with armrests,-1,0.2231468111225716
+chair/ShapeNet/d69aad24d253474dc984897483a49e2b,chair/ShapeNet/8c4ffe44076e9d4a15f62f0f1afbe530,a chair without armrests,1,1.330611089857113
+chair/ShapeNet/8c4ffe44076e9d4a15f62f0f1afbe530,chair/ShapeNet/d69aad24d253474dc984897483a49e2b,a chair with armrests,-1,0.7448764494894949
+chair/ShapeNet/35e8b034d84f60cb4d226702c1bfe9e2,chair/ShapeNet/4c6c364af4b52751ca6910e4922d61aa,a chair without armrests,1,1.9587361807778958
+chair/ShapeNet/4c6c364af4b52751ca6910e4922d61aa,chair/ShapeNet/35e8b034d84f60cb4d226702c1bfe9e2,a chair with armrests,-1,0.6725733298859212
+chair/ShapeNet/fc3d4268406b396e71a782a4379556c7,chair/ShapeNet/c4ebef05a72fc4f39d62eb3fdc2d3f8a,a chair without armrests,1,1.4304260326746487
+chair/ShapeNet/c4ebef05a72fc4f39d62eb3fdc2d3f8a,chair/ShapeNet/fc3d4268406b396e71a782a4379556c7,a chair with armrests,-1,0.20151475470552593
+chair/ShapeNet/bc61ea1b9348f456492d9da2668ec34c,chair/ShapeNet/64e77e9e5887ce95492d9da2668ec34c,an office chair without armrests,1,0.6872352604382037
+chair/ShapeNet/64e77e9e5887ce95492d9da2668ec34c,chair/ShapeNet/bc61ea1b9348f456492d9da2668ec34c,an office chair with armrests,-1,0.3446962235993828
+chair/ShapeNet/24bbe7f32727901aa6fee8e2140acec9,chair/ShapeNet/9c7b2ed3770d1a6ea6fee8e2140acec9,an office chair without armrests,1,0.6067668190169131
+chair/ShapeNet/9c7b2ed3770d1a6ea6fee8e2140acec9,chair/ShapeNet/24bbe7f32727901aa6fee8e2140acec9,an office chair with armrests,-1,0.11504938879062683
