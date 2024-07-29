@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional, Iterator, List, Sequence, Tupl
 import torch
 import torch.nn as nn
 
+from point_e.models.transformer import CLIPImagePointDiffusionTransformer
 from point_e.util.point_cloud import PointCloud
 
 from .gaussian_diffusion import GaussianDiffusion
@@ -149,7 +150,7 @@ class PointCloudSampler:
                     sigma_max=stage_sigma_max,
                     s_churn=stage_s_churn,
                     guidance_scale=stage_guidance_scale,
-                    experiment2_sampler = self if self.experiment2_t is not None else None
+                    experiment2_sampler = self if self.experiment2_t is not None and type(model) == CLIPImagePointDiffusionTransformer else None
                 )
             else:
                 internal_batch_size = batch_size

@@ -463,6 +463,7 @@ class CLIPImageGridUpsamplePointDiffusionTransformer(UpsamplePointDiffusionTrans
         low_res: torch.Tensor,
         images: Optional[Iterable[ImageType]] = None,
         embeddings: Optional[Iterable[torch.Tensor]] = None,
+        experiment2_step: bool = False,
     ):
         """
         :param x: an [N x C1 x T] tensor.
