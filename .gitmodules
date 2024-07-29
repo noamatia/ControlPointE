@@ -1,0 +1,3 @@
+[submodule "changeit3d/changeit3d/losses/ChamferDistancePytorch"]
+	path = changeit3d/changeit3d/losses/ChamferDistancePytorch
+	url = https://github.com/ThibaultGROUEIX/ChamferDistancePytorch
