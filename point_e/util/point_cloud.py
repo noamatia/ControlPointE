@@ -4,6 +4,7 @@ from typing import BinaryIO, Dict, List, Optional, Union
 
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize, LinearSegmentedColormap
+import torch
 import numpy as np
 import open3d as o3d
 
@@ -30,6 +31,7 @@ class PointCloud:
 
     coords: np.ndarray
     channels: Dict[str, np.ndarray]
+    mask: Optional[np.ndarray] = None
 
     @classmethod
     def load(cls, f: Union[str, BinaryIO]) -> "PointCloud":
@@ -46,6 +48,52 @@ class PointCloud:
                 coords=obj["coords"],
                 channels={k: obj[k] for k in keys if k != "coords"},
             )
+        
+    @classmethod
+    def load_shapenet(cls, path: str) -> "PointCloud":
+        """
+        Load the shapebet point cloud from a .npz file.
+        """
+        with open(path, "rb") as fn:
+            coords = np.load(fn)["pointcloud"].astype(np.float32)
+        coords[:, [0, 1, 2]] = coords[:, [2, 0, 1]]
+        channels = {k: np.zeros_like(coords[:, 0], dtype=np.float32) for k in ["R", "G", "B"]}
+        return PointCloud(
+            coords=coords,
+            channels=channels,
+        )
+        
+    @classmethod
+    def load_partnet(cls, path: str, labels_path: str, shapenet_path: str, masked_labels: list) -> "PointCloud":
+        """
+        Load the partnet point cloud from a .txt file. 
+        """
+        with open(path, "r") as fin:
+            lines = [line.rstrip().split() for line in fin.readlines()]
+        coords = np.array([[float(line[0]), float(line[1]), float(line[2])] for line in lines], dtype=np.float32)
+        coords[:, [0, 1, 2]] = coords[:, [2, 0, 1]]
+        coords = cls.normalize_coords(coords, shapenet_path)
+        channels = {k: np.zeros_like(coords[:, 0], dtype=np.float32) for k in "RGB"}
+        mask = None
+        with open(labels_path, "r") as fin:
+            labels = np.array([int(item.rstrip()) for item in fin.readlines()], dtype=np.int32)
+        mask = np.isin(labels, masked_labels)
+        mask = 1 - mask.astype(int)
+        return PointCloud(
+            coords=coords,
+            channels=channels,
+            mask=mask
+        )
+    
+    @classmethod
+    def normalize_coords(cls, partnet_coords, shapenet_path):
+        shapenet_coords = cls.load_shapenet(shapenet_path).coords
+        partnet_min = np.min(partnet_coords, axis=0)
+        partnet_max = np.max(partnet_coords, axis=0)
+        shapenet_min = np.min(shapenet_coords, axis=0)
+        shapenet_max = np.max(shapenet_coords, axis=0)
+        partnet_coords = (partnet_coords - partnet_min) / (partnet_max - partnet_min) * (shapenet_max - shapenet_min) + shapenet_min
+        return partnet_coords
 
     def save(self, f: Union[str, BinaryIO]):
         """
@@ -125,6 +173,7 @@ class PointCloud:
             return PointCloud(
                 coords=self.coords[indices],
                 channels={k: v[indices] for k, v in self.channels.items()},
+                mask=self.mask[indices] if self.mask is not None else None,
             )
 
         new_coords = self.coords[indices]
@@ -241,3 +290,19 @@ class PointCloud:
                           channels={"R": np.asarray(point_cloud.colors)[:, 0],
                                     "G": np.asarray(point_cloud.colors)[:, 1],
                                     "B": np.asarray(point_cloud.colors)[:, 2]})
+    def encode(self) -> torch.Tensor:
+        """
+        Encode the point cloud to a Kx6 tensor where K is the number of points.
+        """
+        coords = torch.tensor(self.coords.T, dtype=torch.float32)
+        rgb = [(self.channels[x] * 255).astype(np.uint8) for x in "RGB"]
+        rgb = [torch.tensor(x, dtype=torch.float32) for x in rgb]
+        rgb = torch.stack(rgb, dim=0)
+        return torch.cat([coords, rgb], dim=0)
+    
+    def encode_mask(self) -> torch.Tensor:
+        """
+        Encode the mask to a Kx6 tensor where K is the number of points.
+        """
+        return torch.tensor(np.tile(self.mask, (6, 1)), dtype=torch.float32)
+    
