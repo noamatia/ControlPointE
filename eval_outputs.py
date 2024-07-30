@@ -1,7 +1,7 @@
 import os
 
 import tqdm
-os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 os.environ["WANDB_API_KEY"] = "7b14a62f11dc360ce036cf59b53df0c12cd87f5a"
 import torch
 import numpy as np
@@ -11,8 +11,10 @@ from control_point_e import ControlPointE
 from control_shapenet import ControlShapeNet
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+run_name = "07_28_2024_20_51_13_chair_train_chair_val_cd_filter_mean_switch_prob_0.5"
+ckpt = "epoch=99-step=61800.ckpt"
 model = ControlPointE.load_from_checkpoint(
-    "/scratch/noam/cntrl_pointe/07_28_2024_20_50_29_chair_train_chair_val_cd_filter_10th_switch_prob_0.5/epoch=399-step=38000.ckpt",
+    f"/scratch/noam/cntrl_pointe/{run_name}/{ckpt}",
         lr=7e-5 * 0.4,
         dev=device,
         timesteps=1024,
@@ -23,9 +25,11 @@ model = ControlPointE.load_from_checkpoint(
         cond_drop_prob=0.5,
     )
 df = pd.read_csv("data.csv")
-random_subset = df.sample(n=500, random_state=42)
-chosen_indices = random_subset.index.to_numpy()
-np.save('chosen_indices.npy', chosen_indices)
+# random_subset = df.sample(n=500, random_state=42)
+# chosen_indices = random_subset.index.to_numpy()
+# np.save('chosen_indices.npy', chosen_indices)
+chosen_indices = np.load('chosen_indices.npy')
+random_subset = df.iloc[chosen_indices]
 dataset = ControlShapeNet(
         df=random_subset,
         device=device,
@@ -44,4 +48,4 @@ for batch in tqdm.tqdm(data_loader):
         output = curr_output
     else:
         output = torch.cat((output, curr_output), dim=0)
-torch.save(output, "output.pt")
+torch.save(output, f"output/{run_name}.pt")
