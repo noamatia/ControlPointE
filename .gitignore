@@ -3,8 +3,3 @@ __pycache__/
 point_e_model_cache/
 .ipynb_checkpoints/
 .DS_Store
-wandb/
-lightning_logs/
-partnet/
-point_e/examples/experiment1
-point_e/examples/experiment2
