@@ -1,0 +1,41 @@
+Chamfer Distance (all pairs), Average: 0.398
+Chamfer Distance (all pairs), Average, per class:
+  shape_class  holistic-chamfer
+0       chair             0.398
+LAB Average:0.1409863829612732
+LAB-related-metric: Times edit is favored by listener against the original input, Average:0.618
+LAB (all pairs), Average, per class:
+  shape_class       LAB
+0       chair  0.140986
+A classifier trained to recognize 30 shape classes was loaded.
+
+ (Average) Class Distortion for chair: 0.02237030677497387
+
+ (Average) Class Distortion (all classes): 0.02237030677497387
+
+The classifier guesses the classes of the ** gt pointclouds ** with accuracy 0.98
+| shape_class   |   guessed_correct |
+|:--------------|------------------:|
+| chair         |              0.98 |
+
+
+
+The classifier guesses the classes of the ** transformed pointclouds ** with accuracy 0.976
+| shape_class   |   guessed_correct |
+|:--------------|------------------:|
+| chair         |             0.976 |
+
+
+Class = chair, FPD-score = 23.757
+Average across all classes=23.757
+
+(l)-GD excluding part(s) (chair): 0.66
+(l)-GD on the part(s) (chair): 0.992
+GD on entire shapes when both have predicted referred parts  (chair): 0.391
+(l)-GD on the part(s) normalized (chair): 0.966
+
+---------
+without_parts_average: 0.66
+GD_on_pairs_with_parts_average: 0.391
+with_parts_average: 0.992
+with_parts_normalized_average: 0.966

@@ -63,7 +63,7 @@ def run_all_metrics(transformed_shapes, gt_pcs, gt_classes, sentences, vocab, ar
     
     results_on_metrics = dict()
     
-    device = torch.device("cuda:" + str(args.gpu_id))
+    device = torch.device("cuda")
     
     #Prepare input:
     gt_classes = pd.Series(gt_classes, name='shape_class')  #convert to pandas for ease of use via .groupby    
@@ -124,7 +124,7 @@ def run_all_metrics(transformed_shapes, gt_pcs, gt_classes, sentences, vocab, ar
     # Loading (optionally) a shape-clf to measure the Class-Distortion (CD) score
     shape_clf = None
     if args.pretrained_shape_classifier is not None:
-        shape_clf = torch.load(args.pretrained_shape_classifier).to(device)
+        shape_clf = torch.load(args.pretrained_shape_classifier, map_location=device)
         clf_idx_file = osp.join(osp.dirname(args.pretrained_shape_classifier), 'class_name_to_idx.pkl')
         clf_name_to_idx = next(unpickle_data(clf_idx_file))
         logger.info(f'A classifier trained to recognize {len(clf_name_to_idx)} shape classes was loaded.')        

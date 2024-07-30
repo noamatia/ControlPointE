@@ -4,7 +4,7 @@ Script to evaluate a Language-Assisted 3D Shape Edit/Deformation System (ChangeI
 Notice the main code for the metric-evaluation is at the function ```run_all_metrics'''.
 """
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import sys
 sys.path.insert(0, "/home/noamatia/repos/control_point_e/changeit3d")
 
@@ -74,7 +74,7 @@ dataloader = torch.utils.data.DataLoader(dataset=dataset,
 ##
 logger.info('Loading pretrained ChangetIt3DNet (C3DNet)')
 c3d_net, best_epoch, c3d_args = load_pretrained_changeit3d_net(args.pretrained_changeit3d, shape_latent_dim, vocab)
-device = torch.device("cuda:" + str(args.gpu_id))
+device = torch.device("cuda")
 c3d_net = c3d_net.to(device)
 logger.info(f'The model is variant `{c3d_args.shape_editor_variant}` trained with {c3d_args.identity_penalty} identity penalty and Self-Contrast={c3d_args.self_contrast}.')
 logger.info(f'Loaded at epoch {best_epoch}.')
@@ -123,20 +123,42 @@ elif args.shape_generator_type == 'imnet':
 else:
         assert False
         
-transformed_shapes = transformation_results['recons'][1]
-language_used = [vocab.decode_print(s) for s in transformation_results['tokens']]
+# transformed_shapes = transformation_results['recons'][1]
+# language_used = [vocab.decode_print(s) for s in transformation_results['tokens']]
+chosen_indices = np.load("/home/noamatia/repos/control_point_e/chosen_indices.npy")
+transformed_shapes = torch.load("/home/noamatia/repos/control_point_e/output.pt").transpose(1, 2)[:len(chosen_indices)].cpu().numpy()
+theta = np.pi * 1 / 2   
+rotation = np.array(
+    [
+        [np.cos(theta), -np.sin(theta), 0.0],
+        [np.sin(theta), np.cos(theta), 0.0],
+        [0.0, 0.0, 1.0],
+    ],
+    dtype=np.float32,
+)
+transformed_shapes = transformed_shapes @ rotation
+theta = np.pi / 2  # 90 degrees in radians
+rotation = np.array(
+    [
+        [1.0, 0.0, 0.0],
+        [0.0, np.cos(theta), -np.sin(theta)],
+        [0.0, np.sin(theta), np.cos(theta)],
+    ],
+    dtype=np.float32,
+)
+transformed_shapes = transformed_shapes @ rotation
 gt_pc_files = check_loader.dataset.df.source_uid.apply(lambda x: osp.join(args.top_pc_dir, x + ".npz")).tolist()
 
-if args.save_reconstructions:
-    outputs = dict()
-    outputs['transformed_shapes'] = transformed_shapes
-    outputs['language_used'] = language_used
-    outputs['gt_input_pc_files'] = gt_pc_files
-    pickle_data(osp.join(args.log_dir, 'evaluation_outputs.pkl'), outputs)
+# if args.save_reconstructions:
+#     outputs = dict()
+#     outputs['transformed_shapes'] = transformed_shapes
+#     outputs['language_used'] = language_used
+#     outputs['gt_input_pc_files'] = gt_pc_files
+#     pickle_data(osp.join(args.log_dir, 'evaluation_outputs.pkl'), outputs)
     
-## Sample point-clouds to desired granularity for evaluation            
-if transformed_shapes.shape[-2] != args.n_sample_points:
-    transformed_shapes = np.array([uniform_subsample(s, args.n_sample_points, args.random_seed)[0] for s in transformed_shapes])
+# ## Sample point-clouds to desired granularity for evaluation            
+# if transformed_shapes.shape[-2] != args.n_sample_points:
+#     transformed_shapes = np.array([uniform_subsample(s, args.n_sample_points, args.random_seed)[0] for s in transformed_shapes])
     
 ## Load ground-truth input point-clouds
 pc_loader =  partial(pc_loader_from_npz, n_samples=args.n_sample_points, random_seed=args.random_seed)
@@ -145,29 +167,30 @@ gt_pcs = np.array(gt_pcs)
 
 sentences = ndf.utterance_spelled.values
 gt_classes = gt_classes.values
-results_on_metrics = run_all_metrics(transformed_shapes, gt_pcs, gt_classes, sentences, vocab, args, logger)
+results_on_metrics = run_all_metrics(transformed_shapes, gt_pcs[chosen_indices], gt_classes[chosen_indices], sentences[chosen_indices], vocab, args, logger)
+# results_on_metrics = run_all_metrics(transformed_shapes, gt_pcs, gt_classes, sentences, vocab, args, logger)
 
 # Save (pickle) results 
 pickle_data(osp.join(args.log_dir, 'evaluation_metric_results.pkl'), results_on_metrics)
 
 
-if args.evaluate_retrieval_version:
-    ## Nearest neighbor (retrieval) baseline    
-    df_temp = pd.read_csv(args.shape_talk_file)
-    all_train_shapes = df_temp[df_temp.changeit_split == 'train']['source_uid'].unique()
-    print('number of all training shapes', len(all_train_shapes))
+# if args.evaluate_retrieval_version:
+#     ## Nearest neighbor (retrieval) baseline    
+#     df_temp = pd.read_csv(args.shape_talk_file)
+#     all_train_shapes = df_temp[df_temp.changeit_split == 'train']['source_uid'].unique()
+#     print('number of all training shapes', len(all_train_shapes))
 
-    train_latens = torch.from_numpy(np.array([shape_to_latent_code[s] for s in all_train_shapes]))
-    transformed_latents = torch.from_numpy(transformation_results['z_codes'][1])
+#     train_latens = torch.from_numpy(np.array([shape_to_latent_code[s] for s in all_train_shapes]))
+#     transformed_latents = torch.from_numpy(transformation_results['z_codes'][1])
 
-    _, n_ids = k_euclidean_neighbors(1, transformed_latents, train_latens)
-    retrieved_shapes_uids = all_train_shapes[n_ids.squeeze().tolist()]
+#     _, n_ids = k_euclidean_neighbors(1, transformed_latents, train_latens)
+#     retrieved_shapes_uids = all_train_shapes[n_ids.squeeze().tolist()]
 
-    retrieved_files = [osp.join(args.top_pc_dir, x + ".npz") for x in retrieved_shapes_uids]
-    pc_loader =  partial(pc_loader_from_npz, n_samples=args.n_sample_points, random_seed=args.random_seed)
-    retrieved_pcs = np.array(parallel_apply(retrieved_files, pc_loader, n_processes=20))
+#     retrieved_files = [osp.join(args.top_pc_dir, x + ".npz") for x in retrieved_shapes_uids]
+#     pc_loader =  partial(pc_loader_from_npz, n_samples=args.n_sample_points, random_seed=args.random_seed)
+#     retrieved_pcs = np.array(parallel_apply(retrieved_files, pc_loader, n_processes=20))
 
-    results_on_retrieval_version = run_all_metrics(retrieved_pcs, gt_pcs, gt_classes, sentences, vocab, args, logger)
+#     results_on_retrieval_version = run_all_metrics(retrieved_pcs, gt_pcs, gt_classes, sentences, vocab, args, logger)
     
-    # Save (pickle) results 
-    pickle_data(osp.join(args.log_dir, 'evaluation_metric_results_for_retrieval.pkl'), results_on_retrieval_version)
+#     # Save (pickle) results 
+#     pickle_data(osp.join(args.log_dir, 'evaluation_metric_results_for_retrieval.pkl'), results_on_retrieval_version)

@@ -105,7 +105,7 @@ def calculate_fpd(pointclouds_set_a, pointclouds_set_b, pretrained_model_file, f
     Note: currently works only when pre-trained model was built with the DEFAULT arch. parameters (args) of 
     returned by changeit3d.in_out.arguments.parse_train_test_pc_clf_arguments.     
     """
-    model = torch.load(pretrained_model_file).to(device)
+    model = torch.load(pretrained_model_file, map_location=device)
     
     # equip model with "named" feature-extraction capabilities    
     if architecture == "pointnet_with_default_params":

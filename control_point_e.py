@@ -2,6 +2,7 @@ import wandb
 import torch
 import random
 import numpy as np
+from tqdm import tqdm
 import torch.optim as optim
 import pytorch_lightning as pl
 from matplotlib import pyplot as plt
@@ -40,7 +41,7 @@ class ControlPointE(pl.LightningModule):
         self.batch_size = batch_size
         self.switch_prob = switch_prob
         self._init_model(cond_drop_prob, num_points)
-        self._init_val_data(val_data_loader)
+        # self._init_val_data(val_data_loader)
 
     def _init_model(self, cond_drop_prob, num_points):
         self.diffusion = diffusion_from_config(
@@ -122,10 +123,10 @@ class ControlPointE(pl.LightningModule):
 
     def _sample(self, source_latents, prompts, batch_size):
         samples = None
-        for x in self.sampler.sample_batch_progressive(
+        for x in tqdm(self.sampler.sample_batch_progressive(
             batch_size=batch_size,
             model_kwargs={TEXTS: prompts},
             guidances=[source_latents, None],
-        ):
+        )):
             samples = x
         return samples
