@@ -1,41 +1,41 @@
-Chamfer Distance (all pairs), Average: 0.683
+Chamfer Distance (all pairs), Average: 0.71
 Chamfer Distance (all pairs), Average, per class:
   shape_class  holistic-chamfer
-0       chair             0.683
-LAB Average:0.6534223556518555
-LAB-related-metric: Times edit is favored by listener against the original input, Average:0.8840848806366047
+0       chair              0.71
+LAB Average:0.6712713837623596
+LAB-related-metric: Times edit is favored by listener against the original input, Average:0.886
 LAB (all pairs), Average, per class:
   shape_class       LAB
-0       chair  0.653422
+0       chair  0.671271
 A classifier trained to recognize 30 shape classes was loaded.
 
- (Average) Class Distortion for chair: 0.06285063922405243
+ (Average) Class Distortion for chair: 0.06918935477733612
 
- (Average) Class Distortion (all classes): 0.06285063922405243
+ (Average) Class Distortion (all classes): 0.06918935477733612
 
-The classifier guesses the classes of the ** gt pointclouds ** with accuracy 0.9745358090185676
+The classifier guesses the classes of the ** gt pointclouds ** with accuracy 0.98
 | shape_class   |   guessed_correct |
 |:--------------|------------------:|
-| chair         |          0.974536 |
+| chair         |              0.98 |
 
 
 
-The classifier guesses the classes of the ** transformed pointclouds ** with accuracy 0.9370026525198939
+The classifier guesses the classes of the ** transformed pointclouds ** with accuracy 0.938
 | shape_class   |   guessed_correct |
 |:--------------|------------------:|
-| chair         |          0.937003 |
+| chair         |             0.938 |
 
 
-Class = chair, FPD-score = 157.364
-Average across all classes=157.364
+Class = chair, FPD-score = 182.668
+Average across all classes=182.668
 
-(l)-GD excluding part(s) (chair): 1.417
-(l)-GD on the part(s) (chair): 2.316
-GD on entire shapes when both have predicted referred parts  (chair): 0.687
-(l)-GD on the part(s) normalized (chair): 0.94
+(l)-GD excluding part(s) (chair): 1.329
+(l)-GD on the part(s) (chair): 2.617
+GD on entire shapes when both have predicted referred parts  (chair): 0.698
+(l)-GD on the part(s) normalized (chair): 0.928
 
 ---------
-without_parts_average: 1.417
-GD_on_pairs_with_parts_average: 0.687
-with_parts_average: 2.316
-with_parts_normalized_average: 0.94
+without_parts_average: 1.329
+GD_on_pairs_with_parts_average: 0.698
+with_parts_average: 2.617
+with_parts_normalized_average: 0.928
