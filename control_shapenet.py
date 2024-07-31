@@ -10,7 +10,6 @@ SOURCE_UID = "source_uid"
 TARGET_UID = "target_uid"
 SOURCE_LATENTS = "source_latents"
 TARGET_LATENTS = "target_latents"
-LLAMA3_WNLEMMA_UTTERANCE = "llama3_wnlemma_utterance"
 PCS_DIR = "/scratch/noam/shapetalk/point_clouds/scaled_to_align_rendering"
 
 
@@ -24,6 +23,7 @@ class ControlShapeNet(Dataset):
         self,
         num_points: int,
         batch_size: int,
+        prompt_key: str,
         df: pd.DataFrame,
         device: torch.device,
     ):
@@ -34,14 +34,14 @@ class ControlShapeNet(Dataset):
         for _, row in tqdm.tqdm(
             df.iterrows(), total=len(df), desc="Creating ControlShapeNet dataset"
         ):
-            self._append_sample(row, num_points, device)
+            self._append_sample(row, prompt_key, num_points, device)
         self.set_length(batch_size)
 
-    def _append_sample(self, row, num_points, device):
+    def _append_sample(self, row, prompt_key, num_points, device):
         source_uid, target_uid, prompt = (
             row[SOURCE_UID],
             row[TARGET_UID],
-            row[LLAMA3_WNLEMMA_UTTERANCE],
+            row[prompt_key],
         )
         self.prompts.append(prompt)
         source_pc = load_pc(source_uid, num_points)

@@ -18,10 +18,10 @@ def find_free_gpu():
             best_gpu_index = i
 
     nvml.nvmlShutdown()
-    return best_gpu_index
+    return str(best_gpu_index)
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = str(find_free_gpu())
+os.environ["CUDA_VISIBLE_DEVICES"] = find_free_gpu()
 
 import copy
 import wandb
@@ -32,35 +32,41 @@ from datetime import datetime
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from control_point_e import ControlPointE
+from control_shapenet import ControlShapeNet
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from control_shapenet import ControlShapeNet, LLAMA3_WNLEMMA_UTTERANCE
 
 
 torch.set_float32_matmul_precision("high")
 
+UTTERANCE = "utterance"
 BASE_DIR = "/scratch/noam/control_point_e"
+LLAMA3_WNLEMMA_UTTERANCE = "llama3_wnlemma_utterance"
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--subset_size", type=int)
-    parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--epochs", type=int, default=500)
+    parser.add_argument("--val_freq", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=6)
-    parser.add_argument("--val_freq", type=int, default=100)
     parser.add_argument("--num_points", type=int, default=1024)
     parser.add_argument("--lr", type=float, default=7e-5 * 0.4)
     parser.add_argument("--switch_prob", type=float, default=0.5)
     parser.add_argument("--num_val_samples", type=int, default=20)
     parser.add_argument("--val_dataset", type=str, default="chair")
+    parser.add_argument("--prompt_key", type=str, default=UTTERANCE)
     parser.add_argument("--train_dataset", type=str, default="chair")
+    parser.add_argument("--chamfer_percentile", type=float, default=0.5)
     parser.add_argument("--wandb_project", type=str, default="ControlPointE")
+    parser.add_argument("--empty_prompt", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     return args
 
 
 def build_name(args):
     name = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+    name += f"_{args.prompt_key}"
     name += f"_train_{args.train_dataset}"
     if args.subset_size is not None:
         name += f"_subset_{args.subset_size}"
@@ -68,13 +74,22 @@ def build_name(args):
         name += f"_val_{args.val_dataset}"
     if args.switch_prob is not None:
         name += f"_switch_{args.switch_prob}"
+        if args.empty_prompt:
+            name += "_empty"
+    if args.chamfer_percentile is not None:
+        name += f"_chamfer_{str(args.chamfer_percentile).replace('.', '_')}"
     return name
 
 
-def load_df(data_csv, subset_size):
+def load_df(data_csv, subset_size, prompt_key, chamfer_percentile=None):
     df = pd.read_csv(os.path.join(BASE_DIR, "datasets", data_csv))
-    df = df[df[LLAMA3_WNLEMMA_UTTERANCE] != "Unknown"]
-    if subset_size is not None:
+    if prompt_key == LLAMA3_WNLEMMA_UTTERANCE:
+        df = df[df[LLAMA3_WNLEMMA_UTTERANCE] != "Unknown"]
+    if chamfer_percentile is not None:
+        df = df[
+            df["chamfer_distance"] < df["chamfer_distance"].quantile(chamfer_percentile)
+        ]
+    if subset_size is not None and subset_size < len(df):
         df = df.sample(subset_size)
     return df
 
@@ -87,10 +102,16 @@ def main(args):
     os.environ["WANDB_API_KEY"] = "7b14a62f11dc360ce036cf59b53df0c12cd87f5a"
     wandb.init(project=args.wandb_project, name=name, config=vars(args))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_df = load_df(os.path.join(args.train_dataset, "train.csv"), args.subset_size)
+    train_df = load_df(
+        os.path.join(args.train_dataset, "train.csv"),
+        args.subset_size,
+        args.prompt_key,
+        args.chamfer_percentile,
+    )
     train_dataset = ControlShapeNet(
         df=train_df,
         device=device,
+        prompt_key=args.prompt_key,
         num_points=args.num_points,
         batch_size=args.batch_size,
     )
@@ -99,11 +120,14 @@ def main(args):
     )
     if args.val_dataset:
         val_df = load_df(
-            os.path.join(args.val_dataset, "val.csv"), args.num_val_samples
+            os.path.join(args.val_dataset, "val.csv"),
+            args.num_val_samples,
+            args.prompt_key,
         )
         val_dataset = ControlShapeNet(
             df=val_df,
             device=device,
+            prompt_key=args.prompt_key,
             num_points=args.num_points,
             batch_size=args.num_val_samples,
         )
@@ -117,6 +141,7 @@ def main(args):
         num_points=args.num_points,
         batch_size=args.batch_size,
         switch_prob=args.switch_prob,
+        empty_prompt=args.empty_prompt,
         val_data_loader=val_data_loader,
     )
     wandb.watch(model)

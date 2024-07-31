@@ -2,6 +2,7 @@ import wandb
 import torch
 import random
 import numpy as np
+from tqdm import tqdm
 import torch.optim as optim
 import pytorch_lightning as pl
 from matplotlib import pyplot as plt
@@ -29,6 +30,7 @@ class ControlPointE(pl.LightningModule):
         batch_size: int,
         dev: torch.device,
         switch_prob: float,
+        empty_prompt: bool,
         val_data_loader: DataLoader,
     ):
         super().__init__()
@@ -37,6 +39,7 @@ class ControlPointE(pl.LightningModule):
         self.theta = np.pi * 3 / 2
         self.batch_size = batch_size
         self.switch_prob = switch_prob
+        self.empty_prompt = empty_prompt
         self._init_model(num_points)
         self._init_val_data(val_data_loader)
 
@@ -48,26 +51,33 @@ class ControlPointE(pl.LightningModule):
         self.model.create_control_layers()
         upsampler_model = model_from_config(MODEL_CONFIGS[UPSAMPLE], self.dev)
         upsampler_model.eval()
-        upsampler_model.load_state_dict(load_checkpoint("upsample", self.dev))
+        upsampler_model.load_state_dict(load_checkpoint(UPSAMPLE, self.dev))
         self.sampler = PointCloudSampler(
             device=self.dev,
-            models=[self.model, upsampler_model],
-            diffusions=[self.diffusion, upsampler_diffusion],
-            num_points=[1024, 4096 - 1024],
-            aux_channels=["R", "G", "B"],
             guidance_scale=[3.0, 0.0],
+            aux_channels=["R", "G", "B"],
             model_kwargs_key_filter=(TEXTS, ""),
+            models=[self.model, upsampler_model],
+            num_points=[num_points, 4096 - num_points],
+            diffusions=[self.diffusion, upsampler_diffusion],
         )
 
     def _init_val_data(self, val_data_loader):
         log_data = {lt: [] for lt in LATENT_TYPES}
-        for batch in val_data_loader:
+        for batch in tqdm(
+            val_data_loader, total=len(val_data_loader), desc="Initating val data"
+        ):
             for prompt, source_latent, target_latent in zip(
                 batch[PROMPTS], batch[SOURCE_LATENTS], batch[TARGET_LATENTS]
             ):
                 latents = [source_latent, target_latent]
                 for name, latent in zip(LATENT_TYPES, latents):
-                    log_data[name].append(self._plot([latent], prompt))
+                    samples = self.sampler.sample_batch(
+                        batch_size=1,
+                        model_kwargs={},
+                        prev_samples=latent.unsqueeze(0),
+                    )
+                    log_data[name].append(self._plot(samples, prompt))
         wandb.log(log_data, step=None)
 
     def _plot(self, samples, prompt):
@@ -95,8 +105,10 @@ class ControlPointE(pl.LightningModule):
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
         )
-        if random.random() < self.switch_prob:
+        if self.switch_prob is not None and random.random() < self.switch_prob:
             source_latents = target_latents
+            if self.empty_prompt:
+                prompts = ["" for _ in prompts]
         terms = self.diffusion.training_losses(
             model=self.model,
             t=self._sample_t(),
@@ -116,17 +128,11 @@ class ControlPointE(pl.LightningModule):
         self.model.eval()
         with torch.no_grad():
             for prompt, source_latent in zip(batch[PROMPTS], batch[SOURCE_LATENTS]):
-                samples = self._sample(source_latent, [prompt], 1)
+                samples = self.sampler.sample_batch(
+                    batch_size=1,
+                    model_kwargs={TEXTS: [prompt]},
+                    guidances=[source_latent, None],
+                )
                 outputs.append(self._plot(samples, prompt))
         wandb.log({"output": outputs}, step=None)
         self.model.train()
-
-    def _sample(self, source_latents, prompts, batch_size):
-        samples = None
-        for x in self.sampler.sample_batch_progressive(
-            batch_size=batch_size,
-            model_kwargs={TEXTS: prompts},
-            guidances=[source_latents, None],
-        ):
-            samples = x
-        return samples
