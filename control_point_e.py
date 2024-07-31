@@ -64,11 +64,11 @@ class ControlPointE(pl.LightningModule):
 
     def _init_val_data(self, val_data_loader):
         log_data = {lt: [] for lt in LATENT_TYPES}
-        for batch in tqdm(
-            val_data_loader, total=len(val_data_loader), desc="Initating val data"
-        ):
-            for prompt, source_latent, target_latent in zip(
-                batch[PROMPTS], batch[SOURCE_LATENTS], batch[TARGET_LATENTS]
+        for batch in val_data_loader:
+            for prompt, source_latent, target_latent in tqdm(
+                zip(batch[PROMPTS], batch[SOURCE_LATENTS], batch[TARGET_LATENTS]),
+                total=len(batch[PROMPTS]),
+                desc="Initating val data",
             ):
                 latents = [source_latent, target_latent]
                 for name, latent in zip(LATENT_TYPES, latents):

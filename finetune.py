@@ -48,6 +48,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--subset_size", type=int)
     parser.add_argument("--epochs", type=int, default=500)
+    parser.add_argument("--chamfer_percentile", type=float)
     parser.add_argument("--val_freq", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=6)
     parser.add_argument("--num_points", type=int, default=1024)
@@ -55,11 +56,10 @@ def parse_args():
     parser.add_argument("--switch_prob", type=float, default=0.5)
     parser.add_argument("--num_val_samples", type=int, default=20)
     parser.add_argument("--val_dataset", type=str, default="chair")
-    parser.add_argument("--prompt_key", type=str, default=UTTERANCE)
     parser.add_argument("--train_dataset", type=str, default="chair")
-    parser.add_argument("--chamfer_percentile", type=float, default=0.5)
     parser.add_argument("--wandb_project", type=str, default="ControlPointE")
     parser.add_argument("--empty_prompt", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--prompt_key", type=str, default=LLAMA3_WNLEMMA_UTTERANCE)
     args = parser.parse_args()
     return args
 
@@ -73,7 +73,7 @@ def build_name(args):
     if args.val_dataset:
         name += f"_val_{args.val_dataset}"
     if args.switch_prob is not None:
-        name += f"_switch_{args.switch_prob}"
+        name += f"_switch_{str(args.switch_prob).replace('.', '_')}"
         if args.empty_prompt:
             name += "_empty"
     if args.chamfer_percentile is not None:
