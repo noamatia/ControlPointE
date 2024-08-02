@@ -47,19 +47,18 @@ LLAMA3_WNLEMMA_UTTERANCE = "llama3_wnlemma_utterance"
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--subset_size", type=int)
-    parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--chamfer_percentile", type=float)
-    parser.add_argument("--val_freq", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--val_freq", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=6)
     parser.add_argument("--num_points", type=int, default=1024)
     parser.add_argument("--lr", type=float, default=7e-5 * 0.4)
     parser.add_argument("--switch_prob", type=float, default=0.5)
     parser.add_argument("--num_val_samples", type=int, default=20)
     parser.add_argument("--val_dataset", type=str, default="chair")
+    parser.add_argument("--prompt_key", type=str, default=UTTERANCE)
     parser.add_argument("--train_dataset", type=str, default="chair")
+    parser.add_argument("--chamfer_percentile", type=float, default=0.5)
     parser.add_argument("--wandb_project", type=str, default="ControlPointE")
-    parser.add_argument("--empty_prompt", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--prompt_key", type=str, default=LLAMA3_WNLEMMA_UTTERANCE)
     args = parser.parse_args()
     return args
 
@@ -74,8 +73,6 @@ def build_name(args):
         name += f"_val_{args.val_dataset}"
     if args.switch_prob is not None:
         name += f"_switch_{str(args.switch_prob).replace('.', '_')}"
-        if args.empty_prompt:
-            name += "_empty"
     if args.chamfer_percentile is not None:
         name += f"_chamfer_{str(args.chamfer_percentile).replace('.', '_')}"
     return name
@@ -141,7 +138,6 @@ def main(args):
         num_points=args.num_points,
         batch_size=args.batch_size,
         switch_prob=args.switch_prob,
-        empty_prompt=args.empty_prompt,
         val_data_loader=val_data_loader,
     )
     wandb.watch(model)

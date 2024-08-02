@@ -30,7 +30,6 @@ class ControlPointE(pl.LightningModule):
         batch_size: int,
         dev: torch.device,
         switch_prob: float,
-        empty_prompt: bool,
         val_data_loader: DataLoader,
     ):
         super().__init__()
@@ -39,7 +38,6 @@ class ControlPointE(pl.LightningModule):
         self.theta = np.pi * 3 / 2
         self.batch_size = batch_size
         self.switch_prob = switch_prob
-        self.empty_prompt = empty_prompt
         self._init_model(num_points)
         self._init_val_data(val_data_loader)
 
@@ -105,10 +103,8 @@ class ControlPointE(pl.LightningModule):
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
         )
-        if self.switch_prob is not None and random.random() < self.switch_prob:
+        if self.switch_prob and random.random() < self.switch_prob:
             source_latents = target_latents
-            if self.empty_prompt:
-                prompts = ["" for _ in prompts]
         terms = self.diffusion.training_losses(
             model=self.model,
             t=self._sample_t(),
