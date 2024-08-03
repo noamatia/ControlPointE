@@ -350,23 +350,25 @@ def parse_evaluate_changeit3d_arguments(notebook_options=None, save_args=True):
     parser = argparse.ArgumentParser(description='Evaluation of 3D lang-assisted shape editor')
     
     
-    parser.add_argument('-shape_talk_file', type=str, required=True, help='referential language data')
-    parser.add_argument('-vocab_file', type=str, required=True, help='vocabulary file')
-    parser.add_argument('-latent_codes_file', type=str, required=True, help='shape_uid_to_latent_code dictionary')    
-    parser.add_argument('-pretrained_changeit3d', type=str, required=True, help='string pointing to saved file')    
-    parser.add_argument('-top_pc_dir', type=str, required=True, help='top dir location of gt pointclouds')
+    parser.add_argument('-shape_talk_file', type=str,  help='referential language data', default="/scratch/noam/control_point_e/eval_changeit3d/chair/500_random_samples/samples.csv")
+    parser.add_argument('-vocab_file', type=str,  help='vocabulary file', default="/scratch/noam/shapetalk/language/vocabulary.pkl")
+    parser.add_argument('-latent_codes_file', type=str,  default="/scratch/noam/changeit3d/pretrained/shape_latents/pcae_latent_codes.pkl")      
+    parser.add_argument('-pretrained_changeit3d', type=str,  default="/scratch/noam/changeit3d/pretrained/changers/pcae_based/all_shapetalk_classes/decoupling_mag_direction/idpen_0.01_sc_False/best_model.pt")    
+    parser.add_argument('-top_pc_dir', type=str,  default="/scratch/noam/shapetalk/point_clouds/scaled_to_align_rendering")
     
-    parser.add_argument('--restrict_shape_class', type=str, nargs='*', default=['chair', 'table', 'lamp'])        
+    parser.add_argument('--restrict_shape_class', type=str, nargs='*', default=['chair'])        
     parser.add_argument('--pretrained_shape_classifier', type=str, help='if given, will be used to measure '
-                                                                        'the Class-Preservation (CP) score.')    
-    parser.add_argument('--compute_fpd', default=True, type=str2bool, help='if shape classifier is given and this is True, it will also compute Frechet PointCloud based Distance')
+                                                                        'the Class-Preservation (CP) score.',
+                                                                        default="/scratch/noam/changeit3d/pretrained/pc_classifiers/rs_2022/all_shapetalk_classes/best_model.pkl")    
+    parser.add_argument('--compute_fpd', default=True, type=str2bool, help='if shape classifier is given and this is True, it will also compute Frechet PointCloud based Distance') 
     parser.add_argument('--shape_part_classifiers_top_dir', type=str, help='if given, pretrained classifiers located here will be loaded and will be used to measure '
-                                                                           'localized-GD (l-GD) score under Chamfer loss')
+                                                                           'localized-GD (l-GD) score under Chamfer loss', default="/scratch/noam/changeit3d/pretrained/part_predictors/shapenet_core_based")
     parser.add_argument('--pretrained_oracle_listener', type=str, help='if given, will be used to measure '
-                                                                       'the Linguistic-Association Boost (LAB) score')
+                                                                       'the Linguistic-Association Boost (LAB) score',
+                                                                       default="/scratch/noam/changeit3d/pretrained/listeners/oracle_listener/all_shapetalk_classes/rs_2023/listener_dgcnn_based/ablation1/best_model.pkl")
 
     parser.add_argument('--shape_generator_type', type=str, default="pcae", choices=["pcae", "sgf", "imnet"])
-    parser.add_argument('--pretrained_shape_generator', type=str, required=False, help='you must pass it when using pcae')
+    parser.add_argument('--pretrained_shape_generator', type=str, required=False, help='you must pass it when using pcae', default="/scratch/noam/changeit3d/pretrained/pc_autoencoders/pointnet/rs_2022/points_4096/all_classes/scaled_to_align_rendering/08-07-2022-22-23-42/best_model.pt")
 
     parser.add_argument('--n_sample_points', type=positive_int, default=2048, help="extracted pointcloud points per shape used for evaluation")
 
