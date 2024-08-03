@@ -30,7 +30,7 @@ class ControlPointE(pl.LightningModule):
         batch_size: int,
         dev: torch.device,
         switch_prob: float,
-        val_data_loader: DataLoader,
+        val_data_loader: DataLoader = None,
     ):
         super().__init__()
         self.lr = lr
@@ -39,7 +39,8 @@ class ControlPointE(pl.LightningModule):
         self.batch_size = batch_size
         self.switch_prob = switch_prob
         self._init_model(num_points)
-        self._init_val_data(val_data_loader)
+        if val_data_loader is not None:
+            self._init_val_data(val_data_loader)
 
     def _init_model(self, num_points):
         self.diffusion = diffusion_from_config(DIFFUSION_CONFIGS[MODEL_NAME])
