@@ -350,13 +350,13 @@ def parse_evaluate_changeit3d_arguments(notebook_options=None, save_args=True):
     parser = argparse.ArgumentParser(description='Evaluation of 3D lang-assisted shape editor')
     
     
-    parser.add_argument('-shape_talk_file', type=str,  help='referential language data', default="/scratch/noam/control_point_e/eval_changeit3d/chair/500_random_samples/samples.csv")
+    parser.add_argument('-shape_talk_file', type=str,  help='referential language data', default="/scratch/noam/shapetalk/language/shapetalk_preprocessed_public_version_0.csv")
     parser.add_argument('-vocab_file', type=str,  help='vocabulary file', default="/scratch/noam/shapetalk/language/vocabulary.pkl")
     parser.add_argument('-latent_codes_file', type=str,  default="/scratch/noam/changeit3d/pretrained/shape_latents/pcae_latent_codes.pkl")      
     parser.add_argument('-pretrained_changeit3d', type=str,  default="/scratch/noam/changeit3d/pretrained/changers/pcae_based/all_shapetalk_classes/decoupling_mag_direction/idpen_0.01_sc_False/best_model.pt")    
     parser.add_argument('-top_pc_dir', type=str,  default="/scratch/noam/shapetalk/point_clouds/scaled_to_align_rendering")
     
-    parser.add_argument('--restrict_shape_class', type=str, nargs='*', default=['chair'])        
+    parser.add_argument('--restrict_shape_class', type=str, nargs='*', default=['chair', 'lamp', 'table'])        
     parser.add_argument('--pretrained_shape_classifier', type=str, help='if given, will be used to measure '
                                                                         'the Class-Preservation (CP) score.',
                                                                         default="/scratch/noam/changeit3d/pretrained/pc_classifiers/rs_2022/all_shapetalk_classes/best_model.pkl")    

@@ -11,8 +11,8 @@ from point_e.util.plotting import plot_point_cloud
 from point_e.models.download import load_checkpoint
 from point_e.diffusion.sampler import PointCloudSampler
 from point_e.models.configs import MODEL_CONFIGS, model_from_config
-from control_shapenet import PROMPTS, SOURCE_LATENTS, TARGET_LATENTS
 from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
+from control_shapenet import PROMPTS, SOURCE_LATENTS, TARGET_LATENTS, SWITCH_PROMPTS
 
 TEXTS = "texts"
 SOURCE = "source"
@@ -99,13 +99,15 @@ class ControlPointE(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.lr)
 
     def training_step(self, batch, batch_idx):
-        prompts, source_latents, target_latents = (
+        prompts, source_latents, target_latents, switch_prompts = (
             batch[PROMPTS],
             batch[SOURCE_LATENTS],
             batch[TARGET_LATENTS],
+            batch[SWITCH_PROMPTS],
         )
         if self.switch_prob and random.random() < self.switch_prob:
             source_latents = target_latents
+            prompts = switch_prompts
         terms = self.diffusion.training_losses(
             model=self.model,
             t=self._sample_t(),

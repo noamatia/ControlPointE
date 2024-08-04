@@ -32,33 +32,31 @@ from datetime import datetime
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from control_point_e import ControlPointE
-from control_shapenet import ControlShapeNet
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from control_shapenet import ControlShapeNet, UTTERANCE, LLAMA3_WNLEMMA_UTTERANCE
 
 
 torch.set_float32_matmul_precision("high")
 
-UTTERANCE = "utterance"
 BASE_DIR = "/scratch/noam/control_point_e"
-LLAMA3_WNLEMMA_UTTERANCE = "llama3_wnlemma_utterance"
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--subset_size", type=int)
     parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--chamfer_percentile", type=float)
     parser.add_argument("--val_freq", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=6)
     parser.add_argument("--num_points", type=int, default=1024)
     parser.add_argument("--lr", type=float, default=7e-5 * 0.4)
-    parser.add_argument("--switch_prob", type=float, default=0.5)
+    parser.add_argument("--switch_prob", type=float, default=0.1)
     parser.add_argument("--num_val_samples", type=int, default=20)
     parser.add_argument("--val_dataset", type=str, default="chair")
-    parser.add_argument("--prompt_key", type=str, default=UTTERANCE)
     parser.add_argument("--train_dataset", type=str, default="chair")
-    parser.add_argument("--chamfer_percentile", type=float, default=0.5)
     parser.add_argument("--wandb_project", type=str, default="ControlPointE")
+    parser.add_argument("--prompt_key", type=str, default=LLAMA3_WNLEMMA_UTTERANCE)
     args = parser.parse_args()
     return args
 

@@ -4,7 +4,7 @@ Script to evaluate a Language-Assisted 3D Shape Edit/Deformation System (ChangeI
 Notice the main code for the metric-evaluation is at the function ```run_all_metrics'''.
 """
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import sys
 sys.path.insert(0, "/home/noamatia/repos/control_point_e/changeit3d")
 
