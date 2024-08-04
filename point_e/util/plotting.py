@@ -15,6 +15,7 @@ def plot_point_cloud(
         (0.5, 0.5, 0.5),
     ),
     theta: float = None,
+    color_by_distance: bool = False,
 ):
     """
     Render a point cloud as a plot to the given image path.
@@ -30,12 +31,20 @@ def plot_point_cloud(
         for j in range(grid_size):
             ax = fig.add_subplot(grid_size, grid_size, 1 + j + i * grid_size, projection="3d")
             color_args = {}
-            if color:
+            c = pc.coords
+            if color_by_distance:
+                distances = np.linalg.norm(c, axis=1)
+                max_distance = np.max(distances)
+                min_distance = np.min(distances)
+                normalized_distances = (distances - min_distance) / (max_distance - min_distance)
+                cmap = plt.cm.jet
+                rgba_values = cmap(normalized_distances)
+                color_args["c"] = np.stack([rgba_values[:, 0], rgba_values[:, 1], rgba_values[:, 2]], axis=-1)
+            elif color:
                 color_args["c"] = np.stack(
                     [pc.channels["R"], pc.channels["G"], pc.channels["B"]], axis=-1
                 )
-            c = pc.coords
-
+    
             if grid_size > 1:
                 theta = np.pi * 2 * (i * grid_size + j) / (grid_size**2)
             if theta is not None:

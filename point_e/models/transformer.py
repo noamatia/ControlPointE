@@ -411,6 +411,14 @@ class PointDiffusionTransformer(nn.Module):
             else:
                 param.requires_grad = False
 
+    @staticmethod
+    def is_trainable_param(name):
+        return (
+            name.startswith("backbone")
+            or name.startswith("ln_post")
+            or name.startswith("output_proj")
+        )
+
     def freeze_all_parameters(self):
         for param in self.parameters():
             param.requires_grad = False
