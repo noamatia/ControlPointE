@@ -11,7 +11,6 @@ SOURCE_UID = "source_uid"
 TARGET_UID = "target_uid"
 NEGATIVE_UID = "negative_uid"
 POSITIVE_UID = "positive_uid"
-SWITCH_PROMPTS = "switch_prompts"
 SOURCE_LATENTS = "source_latents"
 TARGET_LATENTS = "target_latents"
 NEGATIVE_PROMPTS = "negative_prompts"
@@ -40,7 +39,6 @@ class ShapeTalk(Dataset):
     ):
         super().__init__()
         self.prompts = []
-        self.switch_prompts = []
         self.source_latents = []
         self.target_latents = []
         for _, row in tqdm.tqdm(
@@ -57,12 +55,6 @@ class ShapeTalk(Dataset):
             row["random_wnlemma"],
         )
         self.prompts.append(prompt)
-        if prompt_key == LLAMA3_WNLEMMA_UTTERANCE:
-            self.switch_prompts.append(random_wnlemma)
-        elif prompt_key == UTTERANCE:
-            self.switch_prompts.append(prompt)
-        else:
-            raise ValueError(f"Unknown prompt_key: {prompt}")
         source_pc = load_pc(source_uid, num_points)
         target_pc = load_pc(target_uid, num_points)
         self.source_latents.append(source_pc.encode().to(device))
@@ -90,7 +82,6 @@ class ShapeTalk(Dataset):
             PROMPTS: self.prompts[index],
             SOURCE_LATENTS: self.source_latents[index],
             TARGET_LATENTS: self.target_latents[index],
-            SWITCH_PROMPTS: self.switch_prompts[index],
         }
 
 
