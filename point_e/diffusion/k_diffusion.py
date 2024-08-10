@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+import os
 import numpy as np
 import torch as th
 
@@ -133,9 +134,21 @@ def karras_sample_progressive(
     s_tmax=float("inf"),
     s_noise=1.0,
     guidance_scale=0.0,
+    injection_sampler=None
 ):
     sigmas = get_sigmas_karras(steps, sigma_min, sigma_max, rho, device=device)
     x_T = th.randn(*shape, device=device) * sigma_max
+    if injection_sampler is not None:
+        assert sampler == "heun"
+        assert shape[0] == 2
+        shape = (1, shape[1], shape[2])
+        x_T_path = os.path.join(injection_sampler.injection_seed_dir, "x_T.pt")
+        if os.path.exists(x_T_path):
+            x_T = th.load(x_T_path)
+        else:
+            x_T = th.randn(*shape, device=device) * sigma_max
+            x_T = th.cat([x_T, x_T], dim=0)
+            th.save(x_T, x_T_path)
     sample_fn = {"heun": sample_heun, "dpm": sample_dpm, "ancestral": sample_euler_ancestral}[
         sampler
     ]
@@ -156,9 +169,9 @@ def karras_sample_progressive(
     elif isinstance(diffusion, GaussianDiffusion):
         model = GaussianToKarrasDenoiser(model, diffusion)
 
-        def denoiser(x_t, sigma):
+        def denoiser(x_t, sigma, injection_step=False):
             _, denoised = model.denoise(
-                x_t, sigma, clip_denoised=clip_denoised, model_kwargs=model_kwargs
+                x_t, sigma, clip_denoised=clip_denoised, model_kwargs={**model_kwargs, "injection_step": injection_step}
             )
             return denoised
 
@@ -167,10 +180,10 @@ def karras_sample_progressive(
 
     if guidance_scale != 0 and guidance_scale != 1:
 
-        def guided_denoiser(x_t, sigma):
+        def guided_denoiser(x_t, sigma, injection_step=False):
             x_t = th.cat([x_t, x_t], dim=0)
             sigma = th.cat([sigma, sigma], dim=0)
-            x_0 = denoiser(x_t, sigma)
+            x_0 = denoiser(x_t, sigma, injection_step)
             cond_x_0, uncond_x_0 = th.split(x_0, len(x_0) // 2, dim=0)
             x_0 = uncond_x_0 + guidance_scale * (cond_x_0 - uncond_x_0)
             return x_0
@@ -183,6 +196,7 @@ def karras_sample_progressive(
         x_T,
         sigmas,
         progress=progress,
+        injection_sampler=injection_sampler,
         **sampler_args,
     ):
         if isinstance(diffusion, GaussianDiffusion):
@@ -241,6 +255,7 @@ def sample_heun(
     x,
     sigmas,
     progress=False,
+    injection_sampler=None,
     s_churn=0.0,
     s_tmin=0.0,
     s_tmax=float("inf"),
@@ -254,15 +269,27 @@ def sample_heun(
 
         indices = tqdm(indices)
 
+    injection = injection_sampler is not None
     for i in indices:
         gamma = (
             min(s_churn / (len(sigmas) - 1), 2**0.5 - 1) if s_tmin <= sigmas[i] <= s_tmax else 0.0
         )
-        eps = th.randn_like(x) * s_noise
+        injection_step = injection and i < injection_sampler.injection_t
+        if injection:
+            assert x.shape[0] == 2
+            eps_path = os.path.join(injection_sampler.injection_seed_dir, f"eps_{i}.pt")
+            if os.path.exists(eps_path):
+                eps = th.load(eps_path)
+            else:
+                eps = th.randn((1, x.shape[1], x.shape[2])) * s_noise
+                eps = th.cat([eps, eps], dim=0).to(x.device)
+                th.save(eps, eps_path)
+        else:
+            eps = th.randn_like(x) * s_noise
         sigma_hat = sigmas[i] * (gamma + 1)
         if gamma > 0:
             x = x + eps * (sigma_hat**2 - sigmas[i] ** 2) ** 0.5
-        denoised = denoiser(x, sigma_hat * s_in)
+        denoised = denoiser(x, sigma_hat * s_in, injection_step)
         d = to_d(x, sigma_hat, denoised)
         yield {"x": x, "i": i, "sigma": sigmas[i], "sigma_hat": sigma_hat, "pred_xstart": denoised}
         dt = sigmas[i + 1] - sigma_hat
@@ -272,10 +299,17 @@ def sample_heun(
         else:
             # Heun's method
             x_2 = x + d * dt
-            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in)
+            denoised_2 = denoiser(x_2, sigmas[i + 1] * s_in, injection_step)
             d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
+        if injection and not injection_step:
+            distances = th.norm(x[0][:3] - x[1][:3], dim=0).cpu().numpy()
+            sorted_indices = np.argsort(distances)[::-1]
+            injection_indices = sorted_indices[:int(len(sorted_indices) * injection_sampler.injection_percentile)]
+            mask = th.zeros(x.size(2), dtype=th.bool).to(x.device)
+            mask[injection_indices.copy()] = True
+            x[1] = x[1].where(mask.unsqueeze(0).unsqueeze(0), x[0])
     yield {"x": x, "pred_xstart": denoised}
 
 

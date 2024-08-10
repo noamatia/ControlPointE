@@ -39,6 +39,9 @@ class PointCloudSampler:
         sigma_min: Sequence[float] = (1e-3, 1e-3),
         sigma_max: Sequence[float] = (120, 160),
         s_churn: Sequence[float] = (3, 0),
+        injection_t: Optional[int] = None,
+        injection_percentile: Optional[float] = None,
+        injection_seed_dir: Optional[str] = None,
     ):
         n = len(models)
         assert n > 0
@@ -87,6 +90,9 @@ class PointCloudSampler:
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
         self.s_churn = s_churn
+        self.injection_t = injection_t
+        self.injection_percentile = injection_percentile
+        self.injection_seed_dir = injection_seed_dir
 
         self.models = models
         self.diffusions = diffusions
@@ -157,6 +163,15 @@ class PointCloudSampler:
                         stage_model_kwargs[k] = torch.cat([v, torch.zeros_like(v)], dim=0)
 
             if stage_use_karras:
+                if (
+                    self.injection_t is not None
+                    and self.injection_percentile is not None
+                    and self.injection_seed_dir is not None
+                    and type(model) != CLIPImageGridUpsamplePointDiffusionTransformer
+                ):
+                    injection_sampler = self
+                else:
+                    injection_sampler = None
                 samples_it = karras_sample_progressive(
                     diffusion=diffusion,
                     model=model,
@@ -169,6 +184,7 @@ class PointCloudSampler:
                     sigma_max=stage_sigma_max,
                     s_churn=stage_s_churn,
                     guidance_scale=stage_guidance_scale,
+                    injection_sampler = injection_sampler,
                 )
             else:
                 internal_batch_size = batch_size
