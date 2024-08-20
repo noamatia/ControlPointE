@@ -304,8 +304,11 @@ def sample_heun(
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
         if injection and not injection_step:
-            distances = th.norm(x[0][:3] - x[1][:3], dim=0).cpu().numpy()
-            sorted_indices = np.argsort(distances)[::-1]
+            if injection_sampler.injection_sorted_indices is None:
+                distances = th.norm(x[0][:3] - x[1][:3], dim=0).cpu().numpy()
+                sorted_indices = np.argsort(distances)[::-1]
+            else:
+                sorted_indices = injection_sampler.injection_sorted_indices
             injection_indices = sorted_indices[:int(len(sorted_indices) * injection_sampler.injection_percentile)]
             mask = th.zeros(x.size(2), dtype=th.bool).to(x.device)
             mask[injection_indices.copy()] = True

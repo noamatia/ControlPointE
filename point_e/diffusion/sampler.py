@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tupl
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from point_e.util.point_cloud import PointCloud
 from point_e.models.transformer import CLIPImageGridUpsamplePointDiffusionTransformer
@@ -42,6 +43,7 @@ class PointCloudSampler:
         injection_t: Optional[int] = None,
         injection_percentile: Optional[float] = None,
         injection_seed_dir: Optional[str] = None,
+        injection_sorted_indices: Optional[np.ndarray] = None,
     ):
         n = len(models)
         assert n > 0
@@ -93,6 +95,7 @@ class PointCloudSampler:
         self.injection_t = injection_t
         self.injection_percentile = injection_percentile
         self.injection_seed_dir = injection_seed_dir
+        self.injection_sorted_indices = injection_sorted_indices
 
         self.models = models
         self.diffusions = diffusions
